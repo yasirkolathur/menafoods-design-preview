@@ -1,0 +1,85 @@
+/* ===== MENAFoods · Souq Modern · component treatment layer (loads after ui.css) =====
+   Idea: a modern souq. Sand paper surfaces, terracotta brand, saffron-gold accents, Sadu-weave bands,
+   khatam (8-point star) lattice in headers, arch (qaws) shaped icon wells, framed "stamped" cards. */
+@import url(theme-vars.css);
+@font-face{font-family:"Reem Kufi";src:url(fonts/ReemKufi-Var.ttf) format("truetype");font-weight:400 700;font-display:swap}
+.disp,h1,h2,.lt,.sec-h h2,.hero .v,.money.big,.big-c{font-family:"Reem Kufi","IBM Plex Sans Arabic","Inter",sans-serif;letter-spacing:0}
+.hero .v .money,.money.big{font-family:"Inter",sans-serif}
+.lt{font-weight:600}
+[lang=ar] .lt{font-size:28px;line-height:1.5}
+/* headers: lattice band + sadu edge */
+.tb.root{position:relative;background-image:linear-gradient(to bottom,transparent 55%,var(--c-bg)),var(--pat);background-size:auto,56px 56px;padding-bottom:14px}
+.tb.root:after{content:"";position:absolute;inset-inline:0;bottom:0;height:10px;background:var(--sadu) repeat-x;background-size:28px 10px;opacity:.95}
+.tb.root .ctx{background:var(--c-surface);border:1px solid var(--c-border);border-radius:6px;padding:6px 10px}
+.tb.and{background-image:var(--pat);background-size:56px 56px;border-bottom:3px solid var(--c-brand)}
+.sb{background:transparent}
+/* section headings with gold khatam */
+.sec-h h2{display:flex;align-items:center;gap:8px}
+.sec-h h2:before{content:"";width:12px;height:12px;flex:none;background:var(--c-accent);-webkit-mask:var(--ostar) center/contain no-repeat;mask:var(--ostar) center/contain no-repeat}
+/* stamped, framed cards */
+.card,.health,.emptyv,.tile,.cat{border-radius:8px;border:1px solid var(--c-border);box-shadow:inset 0 0 0 3px var(--c-surface),inset 0 0 0 4px var(--c-accent-weak),var(--e1)}
+[data-theme=dark] .card,[data-theme=dark] .health,[data-theme=dark] .emptyv,[data-theme=dark] .tile,[data-theme=dark] .cat{box-shadow:inset 0 0 0 3px var(--c-surface),inset 0 0 0 4px var(--c-border)}
+.plat-android .card{border-radius:8px}
+.plat-ios .grp{border-radius:8px}
+.card.sr,.sec .card.sr{border-top:4px solid var(--c-brand)}
+.alert{border-radius:6px;border-inline-start:4px solid currentColor}
+.alert{color:var(--c-text)} .alert.info{border-inline-start-color:var(--c-info)} .alert.bad{border-inline-start-color:var(--c-danger)} .alert.warn{border-inline-start-color:var(--c-warning)} .alert.ok{border-inline-start-color:var(--c-success)}
+/* arches */
+.thumb,.tile .ti,.qa .c,.cat .g,.health .hic{border-radius:999px 999px 6px 6px}
+.pt .img{border-radius:80px 80px 6px 6px;background:var(--c-surface-2) var(--pat);background-size:56px 56px}
+.spons .img{border-radius:999px 999px 6px 6px}
+.avs,.av{border-radius:0;clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
+/* product tile */
+.pt{border-radius:8px}
+.pt .nm{font-weight:600}
+.pt .pr{color:var(--c-brand-text);font-size:17px}
+/* buttons: stamped */
+.btn{border-radius:8px}
+.btn.pri{box-shadow:inset 0 -3px 0 var(--c-brand-strong)}
+[data-theme=dark] .btn.pri{box-shadow:inset 0 -3px 0 #B8613F}
+.btn.sec{background:var(--c-accent-weak);color:var(--c-text)}
+.plat-android .btn,.plat-ios .btn{border-radius:8px}
+.add,.step{border-radius:8px}
+.chip{border-radius:6px}
+.chip[aria-pressed=true]{box-shadow:inset 0 -2px 0 var(--c-brand-strong)}
+.seg,.plat-android .seg{border-radius:8px}.seg a{border-radius:6px}
+.search,.plat-android .search{border-radius:8px;background:var(--c-surface);border:1.5px solid var(--c-border)}
+.inp,.inpw{border-radius:6px}
+.pill{border-radius:4px}
+/* hero numbers with gold underline */
+.hero .v{position:relative;display:inline-block;padding-bottom:6px}
+.hero .v:after{content:"";position:absolute;inset-inline-start:0;bottom:0;width:48px;height:3px;background:var(--c-accent);border-radius:2px}
+.st-bar i{border-radius:2px;height:6px;transform:skewX(-20deg)}
+.meter,.ag .bar{border-radius:3px}
+.tl .now .m{box-shadow:0 0 0 4px var(--c-accent-weak)}
+/* bottom nav: dark souq awning with gold active */
+.nb:not(.rail){background:var(--c-nav-bg)!important;border:0!important;backdrop-filter:none!important}
+.plat-pwa .nb:not(.rail){left:0;right:0;bottom:0;border-radius:0;min-height:76px;padding:6px 6px 10px;box-shadow:0 -6px 20px rgba(58,31,20,.18)}
+.nb:not(.rail):before{content:"";position:absolute;inset-inline:0;top:-8px;height:8px;background:var(--sadu) repeat-x;background-size:28px 10px}
+.nb .tab{color:var(--c-nav-fg)}
+.nb .tab[aria-current=page],.plat-android .nb .tab[aria-current=page]{color:var(--c-nav-active)}
+.nb .tab[aria-current=page] .ind:after{content:"";position:absolute;top:-10px;left:50%;width:8px;height:8px;background:var(--c-nav-active);transform:translateX(-50%) rotate(45deg)}
+.plat-android .nb .tab[aria-current=page] .ind{background:rgba(242,199,102,.16)}
+.tab .bdg{border:2px solid var(--c-nav-bg)}
+.has-nav .dock{bottom:84px}
+.plat-pwa.phone .cartpill{bottom:92px}
+.cartpill{border-radius:8px;background:var(--c-brand);color:var(--c-text-on-brand)}
+.cartpill .go{background:rgba(255,255,255,.18);border-radius:6px}
+[data-theme=dark] .cartpill .go{background:rgba(0,0,0,.14)}
+/* tablet rail */
+.tablet .nb.rail,.plat-ios.tablet .nb.rail,.plat-android.tablet .nb.rail{background:var(--c-nav-bg) var(--pat);background-size:56px 56px;border:0}
+.tablet .nb.rail .tab{color:var(--c-nav-fg)}
+.tablet .nb.rail .tab[aria-current=page]{color:var(--c-nav-active)}
+.plat-ios.tablet .nb.rail .tab[aria-current=page]{background:rgba(242,199,102,.16);color:var(--c-nav-active)}
+.tablet .nb.rail .brand{background:var(--c-accent);color:var(--c-on-accent);border-radius:0;clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
+.tablet .nb.rail .tab[aria-current=page] .ind:after{display:none}
+/* sheets & misc */
+.sheet{border-radius:16px 16px 0 0;border-top:10px solid transparent;border-image:var(--sadu) 0 0 0 0 / 10px 0 0 0 repeat}
+.sheet{background:var(--c-surface);background-clip:padding-box}
+.offbar{border-radius:6px}
+.foot{font-family:"IBM Plex Sans Arabic","Inter",sans-serif}
+.proto{border-radius:8px}
+.emptyv .art{filter:sepia(.15)}
+.souq-wm{display:flex;align-items:center;gap:10px;margin:0 16px 16px;padding:14px 16px;border-radius:8px;background:var(--c-nav-bg) var(--pat);background-size:56px 56px;color:var(--c-nav-fg);font-size:14px;line-height:1.5}
+.souq-wm b{color:var(--c-nav-active);font-family:"Reem Kufi","IBM Plex Sans Arabic",sans-serif;font-size:17px;display:block;font-weight:600}
+.tablet .body>.souq-wm{column-span:all;margin-inline:0}

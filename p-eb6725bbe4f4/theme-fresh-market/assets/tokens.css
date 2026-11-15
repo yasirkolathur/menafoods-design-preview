@@ -1,0 +1,23 @@
+/* MENAFoods · Fresh Market tokens — bright, photography-led: leaf green, tomato, lemon, cream. */
+:root{
+--c-bg:#FFFCF5;--c-surface:#FFFFFF;--c-surface-2:#F2F6EC;--c-surface-sunken:#E8EFDF;--c-border:#E5EBDB;--c-border-strong:#76836B;
+--c-text:#14200F;--c-text-2:#46533F;--c-text-3:#525F4A;--c-text-on-brand:#FFFFFF;
+--c-brand:#1F7A34;--c-brand-strong:#16602A;--c-brand-weak:#DFF3DA;--c-brand-text:#196A2D;
+--c-accent:#FF6A3D;--c-accent-text:#B03A14;--c-accent-weak:#FFE8DE;--c-on-accent:#2A0A00;
+--c-success:#1D7037;--c-success-weak:#E0F3E4;--c-warning:#8A4A00;--c-warning-weak:#FFF0C9;--c-danger:#B4231A;--c-danger-weak:#FFE5E1;
+--c-info:#1C5DA8;--c-info-weak:#E3EEFB;--c-sponsored:#46533F;--c-focus:#1C5DA8;--c-scrim:#14200F66;
+--c-lemon:#FFE15A;--c-on-lemon:#2B2400;
+--s0:0px;--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;--s10:40px;--s12:48px;--s16:64px;
+--r-xs:10px;--r-sm:14px;--r-md:18px;--r-lg:24px;--r-xl:32px;--r-pill:999px;
+--e0:none;--e1:0 2px 10px rgba(31,60,20,.07);--e2:0 10px 30px rgba(31,60,20,.12);--e3:0 24px 60px rgba(31,60,20,.2);
+--d-instant:90ms;--d-quick:180ms;--d-base:260ms;--d-sheet:380ms;
+--ease-standard:cubic-bezier(0.2,0,0,1);--ease-enter:cubic-bezier(0.05,0.7,0.1,1);--ease-exit:cubic-bezier(0.3,0,0.8,0.15);--ease-spring:cubic-bezier(0.34,1.56,0.64,1);
+}
+[data-theme=dark]{
+--c-bg:#0F140C;--c-surface:#182014;--c-surface-2:#212B1C;--c-surface-sunken:#0A0E08;--c-border:#2C3825;--c-border-strong:#859277;
+--c-text:#F1F6EC;--c-text-2:#B3C0A8;--c-text-3:#A2B096;--c-text-on-brand:#06200C;
+--c-brand:#6CD47E;--c-brand-strong:#8EE39C;--c-brand-weak:#1B3519;--c-brand-text:#7FDB8E;
+--c-accent:#FF8A63;--c-accent-text:#FF9F7E;--c-accent-weak:#3A1D12;--c-on-accent:#2A0A00;
+--c-success:#7FDB8E;--c-success-weak:#163019;--c-warning:#F7C25E;--c-warning-weak:#33280F;--c-danger:#FF8C80;--c-danger-weak:#3A1714;
+--c-info:#8CBBF5;--c-info-weak:#14243A;--c-sponsored:#B3C0A8;--c-focus:#8CBBF5;--c-scrim:#000000AA;
+--e1:none;--e2:0 10px 28px rgba(0,0,0,.5);--e3:0 20px 50px rgba(0,0,0,.65);}

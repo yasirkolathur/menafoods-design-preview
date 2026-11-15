@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MENAFoods · Fresh Market · prototype studio</title>
+<link rel="stylesheet" href="assets/tokens.css">
+<style>
+@font-face{font-family:"Inter";src:url(assets/fonts/Inter-Var.ttf) format("truetype");font-weight:100 900}
+@font-face{font-family:"Readex Pro";src:url(assets/fonts/ReadexPro-Var.ttf) format("truetype");font-weight:160 700}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.45 Inter,system-ui,sans-serif;background:#E9E6DD;color:#141613;display:grid;grid-template-columns:300px 1fr;height:100vh;overflow:hidden}
+aside{background:#fff;border-inline-end:1px solid #DEDAD0;display:flex;flex-direction:column;min-height:0}
+.hd{padding:16px 16px 10px}
+h1{font:600 18px/1.3 "Readex Pro",Inter,sans-serif}
+.hd p{color:#545850;font-size:12.5px;margin-top:2px}
+.flt{padding:0 16px 10px;display:flex;flex-direction:column;gap:8px}
+label{font-size:12px;font-weight:600;color:#545850;display:flex;flex-direction:column;gap:4px}
+select,input{font:inherit;border:1.5px solid #8A877E;border-radius:10px;padding:7px 10px;background:#fff;color:#141613;min-height:38px}
+.list{overflow:auto;flex:1;padding:0 8px 16px}
+.list h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:#545850;padding:12px 8px 4px}
+.list a{display:flex;justify-content:space-between;gap:8px;padding:7px 8px;border-radius:8px;color:#141613;text-decoration:none;font-size:13px}
+.list a:hover{background:#EFEDE6}
+.list a[aria-current=true]{background:#1F7A34;color:#fff}.list a[aria-current=true] small{color:#fff}
+.list a small{color:#545850;font-size:11px;font-family:ui-monospace,monospace}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;background:#F6F5F1;border-bottom:1px solid #DEDAD0}
+.bar label{min-width:110px}
+.link{display:flex;gap:8px;padding:8px 16px;align-items:center;background:#F6F5F1;border-bottom:1px solid #DEDAD0}
+.link input{flex:1;font-family:ui-monospace,monospace;font-size:12px}
+.link a,.link button{border:0;border-radius:10px;padding:8px 12px;background:#1F7A34;color:#fff;font-weight:600;text-decoration:none;cursor:pointer;font:600 13px Inter}
+.stage{flex:1;overflow:auto;display:grid;place-items:start center;padding:24px}
+.dev{background:#141613;border-radius:48px;padding:12px;box-shadow:0 18px 48px rgba(20,22,19,.25);transform-origin:top center}
+.dev.tablet{border-radius:32px}
+iframe{border:0;border-radius:36px;display:block;background:#fff}
+.dev.tablet iframe{border-radius:22px}
+.note{font-size:12px;color:#545850;padding:6px 16px}
+:focus-visible{outline:3px solid #1D5AA6;outline-offset:2px}
+</style>
+</head>
+<body>
+<aside aria-label="Screens">
+ <div class="hd"><h1>MENAFoods · Fresh Market</h1><p>Clickable prototype · sample data only · not deployed</p></div>
+ <div class="flt">
+  <label>Role<select id="role"></select></label>
+  <label>Find screen<input id="q" type="search" placeholder="id or title"></label>
+ </div>
+ <nav class="list" id="list" aria-label="Screen list"></nav>
+</aside>
+<main>
+ <div class="bar" role="group" aria-label="View options">
+  <label>Language<select id="lang"><option value="">Device</option><option value="ar">العربية (RTL)</option><option value="en">English (LTR)</option></select></label>
+  <label>Theme<select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+  <label>Platform<select id="plat"><option value="pwa">PWA</option><option value="android">Android · Material 3</option><option value="ios">iOS · HIG</option></select></label>
+  <label>Size<select id="size"><option value="phone">Phone 390×844</option><option value="tablet">Tablet 1194×834</option><option value="reflow">Reflow 320</option></select></label>
+  <label>State<select id="state"><option value="">Default</option><option>offline</option><option>empty</option><option>loading</option><option>error</option><option value="denied">no-permission</option><option>success</option></select></label>
+  <label>Variant<select id="v"></select></label>
+ </div>
+ <div class="link"><label style="flex:1;flex-direction:row;align-items:center;gap:8px">Deep link<input id="dl" readonly></label><button id="copy" type="button">Copy</button><a id="open" href="app.html" target="_blank" rel="noopener">Open full screen</a></div>
+ <div class="stage" tabindex="0" role="region" aria-label="Preview"><div class="dev" id="dev"><iframe id="f" title="App preview" src="about:blank"></iframe></div></div>
+</main>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/theme.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/s-customer.js"></script>
+<script src="assets/js/s-money.js"></script>
+<script src="assets/js/s-common.js"></script>
+<script src="assets/js/s-field.js"></script>
+<script src="assets/js/s-back.js"></script>
+<script src="assets/js/s-rewards.js"></script>
+<script src="assets/js/s-hub.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id), MF=window.MF;
+const st={id:'b.home',role:'',lang:'',theme:'light',plat:'pwa',size:'phone',state:'',v:''};
+function readHash(){ const h=location.hash.replace(/^#\/?/,''); const i=h.indexOf('?'); const id=i<0?h:h.slice(0,i); const q=new URLSearchParams(i<0?'':h.slice(i+1)); if(id&&MF.SCR[id]) st.id=id; ['role','lang','theme','plat','size','state','v'].forEach(k=>{ if(q.has(k)) st[k]=q.get(k); }); }
+readHash();
+const roles=Object.entries(MF.ROLES); $('role').innerHTML='<option value="">Default role per screen</option>'+roles.map(([k,r])=>`<option value="${k}">${r.n[0]}</option>`).join('');
+function q(){ const p=new URLSearchParams(); ['role','lang','theme','plat'].forEach(k=>st[k]&&p.set(k,st[k])); p.set('size',st.size==='reflow'?'phone':st.size); if(st.state) p.set('state',st.state); if(st.v) p.set('v',st.v); return p.toString(); }
+function list(){ const f=$('q').value.toLowerCase(); const by={}; MF.ORDER.forEach(id=>{ const d=MF.SCR[id]; if(st.role&&!d.r.includes(st.role)&&!d.r.includes('*')) return; if(f&&!(id+' '+d.t[0]).toLowerCase().includes(f)) return; (by[d.a]=by[d.a]||[]).push(d); });
+ $('list').innerHTML=Object.keys(MF.AREAS).filter(a=>by[a]).map(a=>`<h2>${MF.AREAS[a][0]} · ${by[a].length}</h2>`+by[a].map(d=>`<a href="#/${d.id}" data-id="${d.id}" ${d.id===st.id?'aria-current="true"':''}><span>${typeof d.t[0]==='string'?d.t[0]:d.id}</span><small>${d.id}</small></a>`).join('')).join(''); }
+function apply(){ const d=MF.SCR[st.id]; $('v').innerHTML='<option value="">—</option>'+(d.v||[]).map(([v,l])=>`<option value="${v}"${v===st.v?' selected':''}>${l[0]}</option>`).join('');
+ ['role','lang','theme','plat','size','state'].forEach(k=>$(k).value=st[k]);
+ const hash=`#/${st.id}?${q()}`; const f=$('f'); const dims=st.size==='tablet'?[1194,834]:st.size==='reflow'?[320,640]:[390,844];
+ f.width=dims[0]; f.height=dims[1]; $('dev').className='dev '+st.size; const avail=document.querySelector('.stage').clientWidth-60; $('dev').style.transform=dims[0]+24>avail?`scale(${avail/(dims[0]+24)})`:'';
+ const src='app.html'+hash; if(f.getAttribute('src')!==src) f.setAttribute('src',src);
+ $('dl').value=location.href.split('#')[0].replace(/index\.html$/,'')+'index.html'+hash; $('open').href=src; history.replaceState(null,'',hash); list(); }
+['role','lang','theme','plat','size','state','v'].forEach(k=>$(k).addEventListener('change',e=>{ st[k]=e.target.value; if(k!=='v'&&k!=='state'&&k!=='role'){} if(k==='role'){} apply(); }));
+$('q').addEventListener('input',list);
+$('list').addEventListener('click',e=>{ const a=e.target.closest('a[data-id]'); if(!a) return; e.preventDefault(); st.id=a.dataset.id; st.v=''; st.state=''; apply(); });
+$('copy').addEventListener('click',()=>{ navigator.clipboard&&navigator.clipboard.writeText($('dl').value); $('copy').textContent='Copied'; setTimeout(()=>$('copy').textContent='Copy',1200); });
+window.addEventListener('resize',apply);
+setInterval(()=>{ try{ const h=$('f').contentWindow.location.hash; const m=h.match(/^#\/([^?]+)/); if(m&&MF.SCR[m[1]]&&m[1]!==st.id){ st.id=m[1]; const qq=new URLSearchParams(h.split('?')[1]||''); st.v=qq.get('v')||''; st.state=qq.get('state')||''; apply(); } }catch(e){} },500);
+apply();
+})();
+</script>
+</body>
+</html>

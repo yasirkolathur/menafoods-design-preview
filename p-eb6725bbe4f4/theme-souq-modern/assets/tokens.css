@@ -1,0 +1,24 @@
+/* MENAFoods · Souq Modern tokens — warm heritage: terracotta, sand, saffron gold, Sadu indigo. */
+:root{
+--c-bg:#F6EFE4;--c-surface:#FFFBF4;--c-surface-2:#F0E5D4;--c-surface-sunken:#E9DCC8;--c-border:#E3D3BC;--c-border-strong:#8A735C;
+--c-text:#2B1A10;--c-text-2:#5C4636;--c-text-3:#6A5442;--c-text-on-brand:#FFFFFF;
+--c-brand:#9C3F24;--c-brand-strong:#7E311B;--c-brand-weak:#F5E0D3;--c-brand-text:#8A361E;
+--c-accent:#D4A23A;--c-accent-text:#7A5208;--c-accent-weak:#F7EBCD;--c-on-accent:#2B1A05;
+--c-success:#3F6B2A;--c-success-weak:#E6EFD9;--c-warning:#8C4A07;--c-warning-weak:#FBE9D2;--c-danger:#A3231C;--c-danger-weak:#FAE3DF;
+--c-info:#2C4A78;--c-info-weak:#E3E9F4;--c-sponsored:#5C4636;--c-focus:#2C4A78;--c-scrim:#2B1A1066;
+--c-nav-bg:#3A1F14;--c-nav-fg:#E9D8C4;--c-nav-active:#F2C766;
+--s0:0px;--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;--s10:40px;--s12:48px;--s16:64px;
+--r-xs:4px;--r-sm:6px;--r-md:8px;--r-lg:10px;--r-xl:16px;--r-pill:999px;
+--e0:none;--e1:0 1px 0 rgba(58,31,20,.06);--e2:0 8px 24px rgba(58,31,20,.12);--e3:0 20px 48px rgba(58,31,20,.22);
+--d-instant:90ms;--d-quick:160ms;--d-base:240ms;--d-sheet:360ms;
+--ease-standard:cubic-bezier(0.2,0,0,1);--ease-enter:cubic-bezier(0.05,0.7,0.1,1);--ease-exit:cubic-bezier(0.3,0,0.8,0.15);--ease-spring:cubic-bezier(0.34,1.36,0.64,1);
+}
+[data-theme=dark]{
+--c-bg:#16100C;--c-surface:#211812;--c-surface-2:#2B2019;--c-surface-sunken:#100B08;--c-border:#3C2D23;--c-border-strong:#9C8672;
+--c-text:#F6ECDF;--c-text-2:#CDB9A5;--c-text-3:#B9A48F;--c-text-on-brand:#2A0E04;
+--c-brand:#E8916D;--c-brand-strong:#F2A887;--c-brand-weak:#3A2117;--c-brand-text:#F0A17F;
+--c-accent:#E5B95C;--c-accent-text:#EDC778;--c-accent-weak:#33270F;--c-on-accent:#2B1A05;
+--c-success:#9CCB7A;--c-success-weak:#1F2A16;--c-warning:#F0B060;--c-warning-weak:#33230F;--c-danger:#FF8E7E;--c-danger-weak:#3A1714;
+--c-info:#9DB8E8;--c-info-weak:#1A2335;--c-sponsored:#CDB9A5;--c-focus:#9DB8E8;--c-scrim:#000000AA;
+--c-nav-bg:#0E0907;--c-nav-fg:#D9C6B2;--c-nav-active:#F2C766;
+--e1:none;--e2:0 8px 24px rgba(0,0,0,.5);--e3:0 18px 48px rgba(0,0,0,.65);}

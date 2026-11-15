@@ -70,6 +70,8 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--mut);font-
 <main>
   <div class="section" data-t="latest"></div>
   <div class="grid" id="g1"></div>
+  <div class="section" data-t="newthemes"></div>
+  <div class="grid" id="g4"></div>
   <div class="section" data-t="phases"></div>
   <div class="grid" id="g2"></div>
   <div class="section" data-t="earlier"></div>
@@ -83,12 +85,25 @@ const T={
  sub:["Pick a theme to open its clickable prototype. Inside each one you can switch role, language, light or dark, phone or tablet, and PWA, Android or iOS.","اختر ثيمًا لفتح النموذج التفاعلي. داخل كل ثيم يمكنك تغيير الدور واللغة والوضع الفاتح أو الداكن والجوال أو الجهاز اللوحي وPWA أو أندرويد أو iOS."],
  latest:["Approved direction","الاتجاه المعتمد"],
  phases:["Phase prototypes","نماذج المراحل"],
+ newthemes:["New visual themes · full app","ثيمات بصرية جديدة · التطبيق كاملًا"], nw:["New","جديد"], dark1:["Dark-first","داكن أولًا"],
  earlier:["Earlier directions","الاتجاهات السابقة"],
  screens:["screens","شاشة"], open:["Open →","← افتح"],
  rec:["Recommended","موصى به"], approved:["Approved","معتمد"], older:["Superseded","سابق"], p1:["Phase 1","المرحلة 1"], p2:["Phase 2","المرحلة 2"],
  foot:["For review only. All businesses, prices, stock and amounts are fictional. No live systems are connected.","للمراجعة فقط. جميع الأنشطة والأسعار والمخزون والمبالغ وهمية. لا يوجد اتصال بأي نظام فعلي."]
 };
 const THEMES=[
+ {g:4,id:"theme-souq-modern",href:"theme-souq-modern/index.html",n:175,badges:["nw"],
+  name:["Souq Modern","السوق العصري"],
+  d:["Warm Saudi heritage: terracotta and sand, Sadu-weave bands, 8-point star lattice, arch shapes and Reem Kufi headings.","تراث سعودي دافئ: الطين والرمل، وشرائط السدو، ونقش النجمة الثمانية، والأقواس، وعناوين بخط ريم كوفي."],
+  chips:[["theme-souq-modern/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]]]},
+ {g:4,id:"theme-pro-ops",href:"theme-pro-ops/index.html",n:175,badges:["nw","dark1"],
+  name:["Pro Ops","العمليات الاحترافية"],
+  d:["Dark-first console for power users: dense rows, monospaced numbers, KPI grids, live sync strip and 3-column tablet.","واجهة تشغيل داكنة للمستخدمين المحترفين: صفوف كثيفة وأرقام أحادية المسافة وشبكات مؤشرات وشريط مزامنة و3 أعمدة على الجهاز اللوحي."],
+  chips:[["theme-pro-ops/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]]]},
+ {g:4,id:"theme-fresh-market",href:"theme-fresh-market/index.html",n:175,badges:["nw"],
+  name:["Fresh Market","السوق الطازج"],
+  d:["Bright and photography-led: real product photos, leaf green with tomato and lemon, pillowy cards and a floating pill nav.","مشرق ويعتمد على الصور: صور منتجات حقيقية، وأخضر ورقي مع الطماطم والليمون، وبطاقات ناعمة وشريط تنقل عائم."],
+  chips:[["theme-fresh-market/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]]]},
  {g:1,id:"redesign-v3",href:"redesign-v3/index.html",n:175,badges:["rec","approved"],rec:1,
   name:["Calm Commerce · v3 (full app)","التجارة الهادئة · الإصدار 3 (التطبيق كاملًا)"],
   d:["The approved redesign of the whole app: ordering, credit, rewards, Business Hub and every staff role.","إعادة التصميم المعتمدة للتطبيق كاملًا: الطلب والائتمان والمكافآت ومركز الأعمال وكل أدوار الموظفين."],
@@ -120,18 +135,18 @@ let L=(()=>{try{const s=localStorage.getItem('mfp.lang');if(s)return s}catch(e){
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function withLang(h){ // pass chosen language to prototypes
   if(h.includes('concepts/')) return h+(h.includes('#')?'&':'#')+'l='+L;
-  if(h.startsWith('redesign-v3/')||h==='app.html') return h+'#/b.home?lang='+L;
+  if(h.startsWith('redesign-v3/')||h.startsWith('theme-')) return h+'#/b.home?lang='+L;
   return h;}
 function render(){
   const i=L==='ar'?1:0; document.documentElement.lang=L; document.documentElement.dir=L==='ar'?'rtl':'ltr';
   document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T[e.dataset.t][i]);
   document.querySelectorAll('.lang button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.l===L));
   document.title=T.title[i]+' · '+(i?'معاينة':'Preview');
-  [1,2,3].forEach(g=>{document.getElementById('g'+g).innerHTML=THEMES.filter(t=>t.g===g).map(t=>`
+  [1,4,2,3].forEach(g=>{document.getElementById('g'+g).innerHTML=THEMES.filter(t=>t.g===g).map(t=>`
    <article class="card${t.rec?' rec':''}">
     <div class="thumb"><img src="thumbs/${t.id}${i?"":"-en"}.webp" alt="" loading="lazy" width="480" height="600"></div>
     <div class="body">
-     <div class="top">${t.badges.map(b=>`<span class="badge ${b==='rec'?'':b==='approved'||b.startsWith('p')?'saf':'mut'}">${T[b][i]}</span>`).join('')}</div>
+     <div class="top">${t.badges.map(b=>`<span class="badge ${b==='rec'||b==='nw'?'':b==='approved'||b.startsWith('p')?'saf':'mut'}">${T[b][i]}</span>`).join('')}</div>
      <h2><a class="stretch" href="${withLang(t.href)}" style="color:inherit;text-decoration:none">${esc(t.name[i])}</a></h2>
      <p class="desc">${esc(t.d[i])}</p>
      ${t.chips?`<div class="chips">${t.chips.map(c=>`<a class="chip" href="${withLang(c[0])}">${esc(c[1][i])}</a>`).join('')}</div>`:''}

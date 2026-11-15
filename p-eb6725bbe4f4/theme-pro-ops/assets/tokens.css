@@ -1,0 +1,24 @@
+/* MENAFoods · Pro Ops tokens — dark-first operations console: graphite, signal teal, amber alerts. */
+:root{
+--c-bg:#EEF1F5;--c-surface:#FFFFFF;--c-surface-2:#E6EAF0;--c-surface-sunken:#DDE2EA;--c-border:#D3D9E2;--c-border-strong:#6B7686;
+--c-text:#0D141D;--c-text-2:#46505E;--c-text-3:#535E6D;--c-text-on-brand:#FFFFFF;
+--c-brand:#0B7568;--c-brand-strong:#085A50;--c-brand-weak:#DDF1EE;--c-brand-text:#086257;
+--c-accent:#E8A317;--c-accent-text:#7A4E00;--c-accent-weak:#FCEFCF;--c-on-accent:#1F1400;
+--c-success:#13703A;--c-success-weak:#DFF3E6;--c-warning:#8A4B00;--c-warning-weak:#FDEED6;--c-danger:#B3261E;--c-danger-weak:#FBE5E3;
+--c-info:#1F5FB0;--c-info-weak:#E2ECFA;--c-sponsored:#46505E;--c-focus:#1F5FB0;--c-scrim:#0D141D80;
+--c-grid:rgba(13,20,29,.05);
+--s0:0px;--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;--s10:40px;--s12:48px;--s16:64px;
+--r-xs:3px;--r-sm:4px;--r-md:6px;--r-lg:8px;--r-xl:12px;--r-pill:999px;
+--e0:none;--e1:none;--e2:0 6px 18px rgba(13,20,29,.14);--e3:0 16px 40px rgba(13,20,29,.25);
+--d-instant:70ms;--d-quick:120ms;--d-base:180ms;--d-sheet:260ms;
+--ease-standard:cubic-bezier(0.2,0,0,1);--ease-enter:cubic-bezier(0.05,0.7,0.1,1);--ease-exit:cubic-bezier(0.3,0,0.8,0.15);--ease-spring:cubic-bezier(0.2,0,0,1);
+}
+[data-theme=dark]{
+--c-bg:#0A0E13;--c-surface:#11171F;--c-surface-2:#18202A;--c-surface-sunken:#06090D;--c-border:#222C38;--c-border-strong:#66768A;
+--c-text:#E4EAF2;--c-text-2:#9AA7B7;--c-text-3:#8C9AAB;--c-text-on-brand:#03140F;
+--c-brand:#2DD4BF;--c-brand-strong:#5EEAD4;--c-brand-weak:#0C2A28;--c-brand-text:#4FE0CC;
+--c-accent:#FFB547;--c-accent-text:#FFC56E;--c-accent-weak:#2E220C;--c-on-accent:#1F1400;
+--c-success:#4ADE80;--c-success-weak:#0E2918;--c-warning:#FBBF5A;--c-warning-weak:#2C2010;--c-danger:#FF7A72;--c-danger-weak:#331513;
+--c-info:#6CB2FF;--c-info-weak:#0F2238;--c-sponsored:#9AA7B7;--c-focus:#6CB2FF;--c-scrim:#000000B3;
+--c-grid:rgba(154,167,183,.06);
+--e1:none;--e2:0 8px 24px rgba(0,0,0,.55);--e3:0 18px 48px rgba(0,0,0,.7);}

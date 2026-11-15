@@ -1,0 +1,97 @@
+/* ===== MENAFoods · Fresh Market · component treatment layer (loads after ui.css) =====
+   Idea: the cheerful neighbourhood market, for busy kitchens. Real product photography everywhere,
+   cream canvas, leaf-green brand, tomato and lemon accents, soft pillowy cards, rounded Baloo Bhaijaan headings,
+   sticker-style tags and a floating pill nav. */
+@font-face{font-family:"Baloo Bhaijaan 2";src:url(fonts/BalooBhaijaan2-Var.ttf) format("truetype");font-weight:400 800;font-display:swap}
+.disp,h1,h2,.lt,.sec-h h2,.hero .v,.ttl{font-family:"Baloo Bhaijaan 2","IBM Plex Sans Arabic","Inter",sans-serif;letter-spacing:0}
+.lt,.plat-ios .lt{font-weight:700;font-size:30px;line-height:1.2}
+[lang=ar] .lt,[lang=ar].plat-ios .lt{font-size:29px;line-height:1.35}
+.hero .v{font-family:"Inter",sans-serif;font-weight:700}
+.sec-h h2{font-size:20px;font-weight:700}
+/* photos */
+.ph{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.thumb:has(.ph){padding:0;overflow:hidden;border-radius:999px;width:44px;height:44px;background:#fff}
+.pt .img{height:132px;padding:0;overflow:hidden;border-radius:20px;background:#F6F1E6}
+.pt .img .ph{border-radius:20px}
+.cat .g{width:64px;height:64px;border-radius:999px;overflow:hidden;background:#fff;box-shadow:0 0 0 3px var(--c-brand-weak)}
+.cat{align-items:center;text-align:center;border:0;box-shadow:var(--e1);border-radius:24px;padding:14px 8px;font-weight:600}
+.cats{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+.spons .img{overflow:hidden;border-radius:20px}
+.card .img[style*="180px"]{height:240px!important;border-radius:28px;overflow:hidden}
+/* surfaces */
+.card,.health,.emptyv,.tile,.pt{border:0;border-radius:24px;box-shadow:var(--e1);background:var(--c-surface)}
+[data-theme=dark] .card,[data-theme=dark] .health,[data-theme=dark] .tile,[data-theme=dark] .pt,[data-theme=dark] .cat{border:1px solid var(--c-border)}
+.plat-android .card{border-radius:24px}
+.plat-ios .grp{border-radius:24px}
+.card.sr{background:linear-gradient(160deg,var(--c-brand-weak),var(--c-surface) 55%)}
+.health{border-radius:20px}
+.alert{border-radius:18px}
+.thumb,.tile .ti,.qa .c,.health .hic{border-radius:999px}
+.qa .c{width:52px;height:52px;background:var(--c-lemon);color:var(--c-on-lemon)}
+.avs,.av{border-radius:999px}
+.pt{padding:8px 8px 12px}
+.pt .nm{font-weight:600;font-size:14.5px}
+.pt .pr{font-size:18px;font-weight:700}
+/* buttons & controls: pills */
+.btn,.plat-ios .btn,.plat-android .btn{border-radius:999px;min-height:52px;font-weight:700}
+.btn.sm{border-radius:999px;min-height:44px}
+.btn.pri{box-shadow:0 6px 16px color-mix(in srgb,var(--c-brand) 35%,transparent)}
+.btn.sec{background:var(--c-brand-weak);color:var(--c-brand-text)}
+.add{background:var(--c-brand);color:var(--c-text-on-brand);border:0;min-height:44px}
+.step{background:var(--c-brand-weak);color:var(--c-brand-text)}
+.step.on{background:var(--c-brand);color:var(--c-text-on-brand)}
+.chip{border-radius:999px;min-height:44px;border:0;background:var(--c-surface-2);font-weight:600}
+.chip[aria-pressed=true]{background:var(--c-text);color:var(--c-bg)}
+.seg{border-radius:999px;padding:4px}
+.seg a{border-radius:999px;min-height:44px}
+.seg a[aria-current=true]{background:var(--c-brand);color:var(--c-text-on-brand)}
+[data-theme=dark] .seg a[aria-current=true]{background:var(--c-brand)}
+.search,.plat-android .search{border-radius:999px;min-height:52px;background:var(--c-surface);box-shadow:var(--e1);border:1.5px solid var(--c-border)}
+.inp,.inpw{border-radius:16px}
+.plat-android .inp,.plat-android .inpw{border-radius:16px}
+.pill{font-weight:700;padding:3px 11px}
+.pill.sug{background:var(--c-lemon);color:var(--c-on-lemon);transform:rotate(-3deg)}
+[dir=rtl] .pill.sug{transform:rotate(3deg)}
+.pill.acc{background:var(--c-accent);color:var(--c-on-accent)}
+.st-bar i{height:8px}
+.meter{height:12px}
+.bars .bc i{border-radius:10px 10px 4px 4px}
+.ring circle:nth-child(2){stroke:var(--c-brand)}
+/* hero banner (injected) */
+.fm-hero{position:relative;margin:0 16px 18px;border-radius:28px;overflow:hidden;min-height:168px;display:flex;align-items:flex-end;background:#EFE6D3 url(img/hero.webp) center/cover no-repeat;box-shadow:var(--e2)}
+[dir=rtl] .fm-hero{background-image:none}
+[dir=rtl] .fm-hero:before{content:"";position:absolute;inset:0;background:url(img/hero.webp) center/cover no-repeat;transform:scaleX(-1)}
+.fm-hero .in{position:relative;padding:18px 18px 16px;max-width:62%;}
+.fm-hero b{display:block;font-family:"Baloo Bhaijaan 2","IBM Plex Sans Arabic",sans-serif;font-size:24px;line-height:1.2;color:#14200F;font-weight:800}
+.fm-hero span{display:block;font-size:13.5px;line-height:1.45;color:#2E3A28;margin:4px 0 10px}
+.fm-hero a{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;background:#1F7A34;color:#fff;font-weight:700;font-size:14px}
+.fm-hero .tag{position:absolute;top:14px;inset-inline-end:14px;background:var(--c-lemon);color:var(--c-on-lemon);font-weight:800;font-size:12px;padding:4px 10px;border-radius:999px;transform:rotate(4deg)}
+.tablet .body>.fm-hero{column-span:all;margin-inline:0;min-height:220px}
+/* nav: floating pill with filled active */
+.plat-pwa .nb:not(.rail){border-radius:999px;left:16px;right:16px;bottom:14px;min-height:68px;background:var(--c-surface);border:0;box-shadow:var(--e3);padding:6px}
+.plat-pwa .tab{border-radius:999px}
+.plat-pwa .tab[aria-current=page],.plat-ios .tab[aria-current=page]{background:var(--c-brand-weak);color:var(--c-brand-text)}
+.plat-android .tab[aria-current=page] .ind{background:var(--c-lemon)}
+.plat-android .tab[aria-current=page] .ind .ic{color:var(--c-on-lemon)}
+.cartpill{border-radius:999px;background:var(--c-brand);color:var(--c-text-on-brand)}
+[data-theme=dark] .cartpill{background:var(--c-brand);color:var(--c-text-on-brand)}
+.cartpill .go{border-radius:999px;background:var(--c-lemon);color:var(--c-on-lemon);min-height:44px}
+.cnt{border-radius:999px;background:rgba(255,255,255,.22)}
+.plat-pwa.phone .cartpill{bottom:96px}
+.has-nav .dock{border-radius:28px}
+.dock{border-radius:28px 28px 0 0}
+.fab{border-radius:999px;background:var(--c-lemon);color:var(--c-on-lemon)}
+.sheet{border-radius:32px 32px 0 0}
+.tablet .sheet{border-radius:32px}
+.toast,.offbar{border-radius:999px}
+.emptyv{border-radius:28px}
+.emptyv .art{width:140px;height:112px}
+.tablet .nb.rail{background:var(--c-surface);border:0;box-shadow:var(--e1)}
+.tablet .nb.rail .brand{border-radius:999px;background:var(--c-brand)}
+.tablet .nb.rail .tab[aria-current=page]{background:var(--c-brand-weak);color:var(--c-brand-text);border-radius:20px}
+.plat-ios.tablet .nb.rail .tab[aria-current=page]{background:var(--c-brand);color:var(--c-text-on-brand);border-radius:999px}
+.tbl thead th{background:var(--c-surface-2)}
+.tbl thead th:first-child{border-start-start-radius:12px;border-end-start-radius:12px}
+.tbl thead th:last-child{border-start-end-radius:12px;border-end-end-radius:12px}
+.fm-hero .sc{position:absolute;inset:0;background:linear-gradient(to right,rgba(248,242,230,.94) 0,rgba(248,242,230,.75) 45%,rgba(248,242,230,0) 72%)}
+[dir=rtl] .fm-hero .sc{background:linear-gradient(to left,rgba(248,242,230,.94) 0,rgba(248,242,230,.75) 45%,rgba(248,242,230,0) 72%)}
