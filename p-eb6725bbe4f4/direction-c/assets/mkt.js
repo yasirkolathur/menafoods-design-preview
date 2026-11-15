@@ -9,9 +9,9 @@ const TH=DOC.dataset.th||'b';
 const FOLDER=location.pathname.replace(/\/[^/]*$/,'').split('/').pop()||'app';
 const KEY=MK.KEY='mf-mkt:'+FOLDER, LKEY='mf-mkt-lang';
 const MIN=60000, HOUR=60*MIN, DAY=24*HOUR;
-let lang=(new URLSearchParams(location.search).get('lang'))||localStorage.getItem(LKEY)||'en';
+let lang=(new URLSearchParams(location.search).get('lang'))||MFAPI.pref.get(LKEY,null)||'en';
 if(lang!=='ar'&&lang!=='en') lang='en';
-let mode=(new URLSearchParams(location.search).get('mode'))||localStorage.getItem('mf-mkt-mode')||'light'; if(mode!=='dark') mode='light';
+let mode=(new URLSearchParams(location.search).get('mode'))||MFAPI.pref.get('mf-mkt-mode',null)||'light'; if(mode!=='dark') mode='light';
 const t=MK.t=(en,ar)=>lang==='ar'?ar:en;
 const tt=MK.tt=a=>Array.isArray(a)?(lang==='ar'?a[1]:a[0]):a;
 const esc=MK.esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -99,9 +99,12 @@ const seed=()=>{ const n=Date.now();
   settings:{notif:{orders:true,msgs:true,payouts:true,reviews:false},tz:'Asia/Riyadh',unit:'metric',prefix:'MKT-',vacation:false,lang:'en'},
   notifs:[],cart:{},buyer:{en:'Al Wadi Restaurant',ar:'مطعم الوادي'},fwd:[]};
 };
-const load=MK.load=()=>{ try{ S=JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ S=null; } if(!S||S.v!==3) { S=seed(); save(); } MK.S=S; return S; };
-const save=MK.save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} };
-const reset=MK.reset=()=>{ S=seed(); MK.S=S; save(); };
+/* all reads/writes go through the data adapter (data/api.js) */
+const ST=MK.store=MFAPI.store('mkt',KEY);
+const load=MK.load=()=>{ S=ST.read(); if(!S||S.v!==3) { S=MFAPI.strip('mkt',seed()); save(); } MK.S=S; return S; };
+const save=MK.save=()=>{ ST.write(S); };
+ST.boot(x=>{ if(x&&x.v===3){ S=x; MK.S=S; if(MK.render) MK.render(); } });
+const reset=MK.reset=()=>{ S=MFAPI.strip('mkt',seed()); MK.S=S; save(); };
 const me=MK.me=()=>S.me;
 const notify=MK.notify=(who,ic,txt,go)=>{ S.notifs.unshift({id:'n'+now()+Math.random().toString(36).slice(2,5),who,ic,txt,go:go||null,ts:now(),read:false}); S.notifs=S.notifs.slice(0,60); };
 const myName=MK.myName=()=>{ const p=S.me.profile; return p?(lang==='ar'?p.ar||p.en:p.en):t('Your store','متجرك'); };
@@ -195,8 +198,8 @@ document.addEventListener('focusout',()=>{ if(UI.pending){ setTimeout(()=>{ cons
 ACT.skip=()=>{ const m=document.getElementById('main'); m&&m.focus(); };
 ACT.shclose=()=>closeSheet();
 ACT.role=r=>{ S.role=r; save(); clearErr(); go(home(r)); };
-ACT.mode=()=>{ mode=mode==='dark'?'light':'dark'; localStorage.setItem('mf-mkt-mode',mode); const u=new URL(location.href); u.searchParams.delete('mode'); history.replaceState(null,'',u.pathname+u.search+u.hash); render(false); const b=document.querySelector('[data-act=mode]'); b&&b.focus(); };
-ACT.lang=()=>{ lang=lang==='ar'?'en':'ar'; localStorage.setItem(LKEY,lang); const u=new URL(location.href); u.searchParams.delete('lang'); history.replaceState(null,'',u.pathname+u.hash); render(false); };
+ACT.mode=()=>{ mode=mode==='dark'?'light':'dark'; MFAPI.pref.set('mf-mkt-mode',mode); const u=new URL(location.href); u.searchParams.delete('mode'); history.replaceState(null,'',u.pathname+u.search+u.hash); render(false); const b=document.querySelector('[data-act=mode]'); b&&b.focus(); };
+ACT.lang=()=>{ lang=lang==='ar'?'en':'ar'; MFAPI.pref.set(LKEY,lang); const u=new URL(location.href); u.searchParams.delete('lang'); history.replaceState(null,'',u.pathname+u.hash); render(false); };
 ACT.reset=()=>sheet(t('Reset the demo?','إعادة ضبط العرض؟'),`<p class="why">${t('This clears everything you did in this preview on this browser (seller, admin and buyer) and starts again from a new seller.','يمسح كل ما فعلته في هذا العرض على هذا المتصفح (البائع والإدارة والمشتري) ويبدأ من بائع جديد.')}</p>${btns(btn(t('Reset demo','إعادة الضبط'),{act:'resetok',k:'bad'}),btn(t('Cancel','إلغاء'),{act:'shclose',k:'sec'}))}`);
 ACT.resetok=()=>{ closeSheet(true); reset(); clearErr(); UI.tab={}; go(home('seller')); toast(t('Demo reset','تمت إعادة الضبط')); };
 ACT.tab=a=>{ const [k,v]=a.split(':'); UI.tab[k]=v; rr(); };
@@ -246,6 +249,7 @@ ACT.fillall=()=>{ fillVerify(); fillBank(); S.me.agree=S.me.agree||{ts:now(),ver
 MK.REF['s.verify']=['Shopify · Payments review — document rows with Upload, “Ready to submit”, Submit for verification; Airwallex · Account activation — registration location + upcoming steps; Wise · upload sheet (Choose from gallery / Upload a file); Grab Driver · document tiles','a2b9a911-3d83-4d07-a0cc-435eeb5173f0','screens',['53ae2e0d-002e-4213-8282-6e4bafe08d24','9fd6b24d-5b2c-40cc-b463-c65e40caba74','d8cc7171-fe81-4e90-b8d2-e25fca401981']];
 const DOCS=[['cr',['Commercial Registration (CR) certificate','شهادة السجل التجاري'],'CR-certificate.pdf'],['vat',['VAT registration certificate (ZATCA)','شهادة التسجيل في ضريبة القيمة المضافة (زاتكا)'],'VAT-certificate.pdf'],['addr',['National address proof (SPL)','إثبات العنوان الوطني (سبل)'],'National-address.pdf'],['sfda',['SFDA establishment licence','ترخيص منشأة من هيئة الغذاء والدواء'],'SFDA-licence.pdf']];
 const fillVerify=MK.fillVerify=()=>{ const b=S.me.biz; Object.assign(b,{legal:b.legal||'Al Nakheel Foods Trading Co. (sample)',cr:b.cr||'7001234567',vat:b.vat||'310123456700003',sfda:b.sfda||'SFDA-EST-000123 (sample)'}); Object.assign(b.addr,{short:b.addr.short||'RRRD2929',bld:b.addr.bld||'2929',street:b.addr.street||'King Fahd Rd (sample)',dist:b.addr.dist||'Al Olaya',city:b.addr.city||'Riyadh',zip:b.addr.zip||'12211',add:b.addr.add||'7788'}); DOCS.forEach(([k,,f])=>{ if(!b.docs[k]) b.docs[k]={f:f+' (sample)',ts:now()}; }); };
+const vCanFill=()=>{ const keep=S.me; S.me=JSON.parse(JSON.stringify(keep)); const x=JSON.stringify(S.me); try{ fillVerify(); }catch(e){} const ch=JSON.stringify(S.me)!==x; S.me=keep; return ch; };
 def('s.verify',{t:()=>t('Verify your business','وثّق نشاطك'),back:()=>home(),render:()=>{ const b=S.me.biz, a=b.addr, d=b.docs; const nd=DOCS.filter(x=>d[x[0]]).length;
  let h=`<div class="pad"><p class="why">${t('MENAFoods is required to know who sells on the marketplace. Enter the details exactly as on your documents.','يلزم أن تعرف منافودز من يبيع في السوق. أدخل البيانات كما في مستنداتك تمامًا.')}</p></div>`;
  h+=sec(t('Business details','بيانات المنشأة'),`<div class="pad">${fld('legal',t('Legal name (as on CR)','الاسم النظامي (كما في السجل)'),{req:true,val:b.legal,max:120})}${fld('cr',t('CR number','رقم السجل التجاري'),{req:true,val:b.cr,ltr:true,mode:'numeric',max:10,hint:t('Unified CR number: 10 digits starting with 7','الرقم الموحد للسجل: 10 أرقام يبدأ بـ 7'),ph:'7XXXXXXXXX'})}${fld('vat',t('VAT registration number','الرقم الضريبي'),{req:true,val:b.vat,ltr:true,mode:'numeric',max:15,hint:t('15 digits, starts and ends with 3','15 رقمًا، يبدأ وينتهي بـ 3'),ph:'3XXXXXXXXXXXXX3'})}${fld('sfda',t('SFDA establishment licence number','رقم ترخيص المنشأة من هيئة الغذاء والدواء'),{req:true,val:b.sfda,ltr:true,max:40,hint:t('As shown on your SFDA establishment licence — we check it with SFDA','كما في ترخيص المنشأة من الهيئة — نتحقق منه لدى الهيئة')})}</div>`);
@@ -266,7 +270,7 @@ const SAMPLE_IBAN='SA3210000000000000123456';
 const fillBank=MK.fillBank=()=>{ const k=S.me.bank; if(!k.ok) Object.assign(k,{name:S.me.biz.legal||'Al Nakheel Foods Trading Co. (sample)',iban:SAMPLE_IBAN,ok:true,ts:now()}); };
 def('s.bank',{t:()=>t('Payout bank account','حساب استلام المدفوعات'),back:()=>S.me.st==='approved'?'s.payouts':home(),render:()=>{ const k=S.me.bank;
  return {b:`<div class="pad"><p class="why">${t('Payouts are sent to a Saudi bank account in your business’s name.','تُحوّل المدفوعات إلى حساب بنكي سعودي باسم منشأتك.')}</p>${fld('bname',t('Account holder name','اسم صاحب الحساب'),{req:true,val:k.name||S.me.biz.legal,hint:t('Should match the legal name on your CR','يجب أن يطابق الاسم النظامي في السجل'),max:120})}${fld('iban',t('IBAN','الآيبان'),{req:true,val:k.iban,ltr:true,ph:'SA00 0000 0000 0000 0000 0000',max:29,hint:t('24 characters, starts with SA','24 خانة تبدأ بـ SA')})}<button type="button" class="lnk" data-act="ibanhelp">${I('help',16)} ${t('Where can I find my IBAN?','أين أجد رقم الآيبان؟')}</button>${k.ok?alert_('ok',t('Bank account saved','تم حفظ الحساب البنكي'),MK.ibanM(k.iban.slice(-4))):''}</div>`,
- dock:`<p class="fine">${t(`By saving, I confirm this IBAN belongs to ${esc(S.me.biz.legal||'my business')} (CR ${esc(S.me.biz.cr||'—')}) and authorise MENAFoods to deposit payouts and to deduct refunds, commission and VAT.`,`بالحفظ أؤكد أن هذا الآيبان يعود إلى ${esc(S.me.biz.legal||'منشأتي')} (السجل ${esc(S.me.biz.cr||'—')}) وأفوّض منافودز بإيداع المدفوعات وخصم المبالغ المستردة والعمولة والضريبة.`)}</p>${btn(t('Use sample','استخدم عينة'),{act:'bfill',k:'ghost'})}${btn(t('Save bank account','احفظ الحساب'),{act:'bsave'})}`}; }});
+ dock:`<p class="fine">${t(`By saving, I confirm this IBAN belongs to ${esc(S.me.biz.legal||'my business')} (CR ${esc(S.me.biz.cr||'—')}) and authorise MENAFoods to deposit payouts and to deduct refunds, commission and VAT.`,`بالحفظ أؤكد أن هذا الآيبان يعود إلى ${esc(S.me.biz.legal||'منشأتي')} (السجل ${esc(S.me.biz.cr||'—')}) وأفوّض منافودز بإيداع المدفوعات وخصم المبالغ المستردة والعمولة والضريبة.`)}</p>${S.me.bank.iban===SAMPLE_IBAN&&S.me.bank.name?'':btn(t('Use sample','استخدم عينة'),{act:'bfill',k:'ghost'})}${btn(t('Save bank account','احفظ الحساب'),{act:'bsave'})}`}; }});
 ACT.ibanhelp=()=>sheet(t('Where can I find my IBAN?','أين أجد رقم الآيبان؟'),`<p class="why">${t('Your IBAN is in your bank app under account details, or on a bank statement. Saudi IBANs have 24 characters and start with SA.','تجد الآيبان في تطبيق البنك ضمن تفاصيل الحساب أو في كشف الحساب. الآيبان السعودي 24 خانة ويبدأ بـ SA.')}</p>${btn(t('Got it','حسنًا'),{act:'shclose',full:true})}`);
 ACT.bfill=()=>{ S.me.bank.name=S.me.biz.legal||'Al Nakheel Foods Trading Co. (sample)'; S.me.bank.iban=SAMPLE_IBAN; clearErr(); save(); rr(); };
 ACT.bsave=()=>{ const f=form(document.getElementById('main')); const ib=f.iban.replace(/\s+/g,'').toUpperCase(); const k=S.me.bank; k.name=f.bname; k.iban=ib;
@@ -1448,7 +1452,7 @@ wrap('s.verify',o=>{ const st=UI.vstep||0; const b=o.b; const idx=[]; let i=b.in
  const summ=st===4?sec(t('Check your details','راجع بياناتك'),`<div class="pad">${kv([[t('Legal name','الاسم النظامي'),esc(B.legal||'—')],[t('CR','السجل'),LTR(B.cr||'—')],[t('VAT','الضريبة'),LTR(B.vat||'—')],[t('SFDA licence','ترخيص الهيئة'),LTR(B.sfda||'—')],[t('Signatory','المفوّض'),esc((B.sig||{}).name||'—')],[t('National address','العنوان الوطني'),LTR(a.short||'—')+' · '+esc(a.city||'')],[t('Documents','المستندات'),t(`${Object.values(B.docs||{}).filter(Boolean).length} uploaded`,`${Object.values(B.docs||{}).filter(Boolean).length} مرفوعة`)]])}${btn(t('Edit business details','عدّل بيانات المنشأة'),{act:'vgo',arg:'0',k:'ghost',sm:true})}</div>`):'';
  const nav=`<nav class="stepper" aria-label="${t('Verification steps','خطوات التحقق')}"><ol>${VSTEPS.map((l,n)=>`<li><button type="button" data-act="vgo" data-arg="${n}"${n===st?' aria-current="step"':''} class="${n<st?'done':''}"><span class="sn" aria-hidden="true">${n+1}</span><span>${tt(l)}</span></button></li>`).join('')}</ol><p class="vh" role="status">${t(`Step ${st+1} of 5: ${tt(VSTEPS[st])}`,`الخطوة ${st+1} من 5: ${tt(VSTEPS[st])}`)}</p></nav>`;
  o.b=nav+out+summ;
- o.dock=st<4?btns(st>0?btn(t('Back','رجوع'),{act:'vgo',arg:String(st-1),k:'sec'}):btn(t('Fill with sample data','املأ ببيانات تجريبية'),{act:'vfill',k:'ghost'}),btn(t('Next: ','التالي: ')+tt(VSTEPS[st+1]),{act:'vgo',arg:String(st+1)})):btns(btn(t('Back','رجوع'),{act:'vgo',arg:'3',k:'sec'}),btn(t('Save business details','احفظ بيانات المنشأة'),{act:'vsave'})); });
+ o.dock=st<4?btns(st>0?btn(t('Back','رجوع'),{act:'vgo',arg:String(st-1),k:'sec'}):(vCanFill()?btn(t('Fill with sample data','املأ ببيانات تجريبية'),{act:'vfill',k:'ghost'}):''),btn(t('Next: ','التالي: ')+tt(VSTEPS[st+1]),{act:'vgo',arg:String(st+1)})):btns(btn(t('Back','رجوع'),{act:'vgo',arg:'3',k:'sec'}),btn(t('Save business details','احفظ بيانات المنشأة'),{act:'vsave'})); });
 ACT.vgo=n=>{ vkeep(); sigKeep(); save(); UI.vstep=Number(n); rr(); window.scrollTo(0,0); const h=document.querySelector('.stepper [aria-current=step]'); h&&h.focus(); };
 wrapA('vsave',(orig,...a)=>{ vkeep(); sigKeep(); orig(...a); if(C.id!=='s.verify') return; const bad=document.querySelector('#main [aria-invalid="true"]'); const box=bad&&bad.closest('[data-vstep]'); if(box){ UI.vstep=Number(box.dataset.vstep); UI.focusBad=true; rr(); } });
 MK.REF['s.submitted']=['Stripe · Verify your business › Review and submit — confirmation with what happens next','eddbbc77-7e5f-4f82-a646-6ff65245714d','screens',[]];

@@ -57,11 +57,15 @@ function seed(){ const n=now(); const day=86400000;
  return S; }
 
 /* ---------------- store ---------------- */
-let S; try{ S=JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ S=null; }
-if(!S||S.ver!==2) S=seed();
+/* all reads/writes go through the data adapter (data/api.js): sample = this browser, live = Catalyst gateway */
+const ST=L.store=MFAPI.store('shop',KEY);
+let S=ST.read();
+if(!S||S.ver!==2) S=MFAPI.strip('shop',seed());
 L.S=()=>S;
-const save=L.save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} };
-L.reset=()=>{ const keep={session:S.session,prefs:S.prefs}; S=seed(); Object.assign(S,keep); MF.cart=S.cart; save(); };
+const save=L.save=()=>{ ST.write(S); };
+L.load=()=>{ const x=ST.read(); S=(x&&x.ver===2)?x:MFAPI.strip('shop',seed()); MF.cart=S.cart; return S; };
+ST.boot(x=>{ if(x&&x.ver===2){ S=x; MF.cart=S.cart; if(L.rr) L.rr(); } });
+L.reset=()=>{ const keep={session:S.session,prefs:S.prefs}; S=MFAPI.strip('shop',seed()); Object.assign(S,keep); MF.cart=S.cart; save(); };
 MF.cart=S.cart;
 
 /* ---------------- small helpers ---------------- */

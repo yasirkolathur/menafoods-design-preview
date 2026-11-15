@@ -6,8 +6,11 @@
 'use strict';
 const MF=window.MF, L=MF&&MF.L; if(!MF||!MF.DATA||!L) return;
 const KEY='mf-mkt:'+(location.pathname.replace(/\/[^/]*$/,'').split('/').pop()||'app');
-const read=()=>{ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ return null; } };
-const write=M=>{ try{ localStorage.setItem(KEY,JSON.stringify(M)); }catch(e){} };
+/* live mode: marketplace orders are split and routed server-side by the gateway, so the browser bridge is off */
+if(MFAPI.live) return;
+const ST=MFAPI.store('mkt',KEY);
+const read=()=>ST.read();
+const write=M=>ST.write(M);
 const {t,tt,H,M:MM,N,LTR,href}=MF; const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const r2=v=>Math.round(v*100)/100;
 const sName=(M,id,ar)=>{ if(id==='s1'){ const p=M.me.profile||{}; return ar?(p.ar||p.en||''):(p.en||''); } const s=M.sellers.find(x=>x.id===id)||{}; return ar?s.ar:s.en; };
