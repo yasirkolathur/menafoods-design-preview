@@ -414,3 +414,66 @@ select.inp{appearance:auto}
 .inpw{direction:ltr}
 .inpw .pre .sar{width:.85em;height:.95em}
 .inpw .inp{text-align:left}
+/* ===== Customer Care (cc.*) · added 15 Nov 2026 · Mobbin refs: Monzo, Grab, Glovo, Vestiaire, talabat, Bumble, Swiggy, Cash App, Wolt, Klaviyo ===== */
+.cc-hi{margin:0 16px 12px}
+.cc-hi h2{font-size:24px;line-height:1.35;font-weight:600}
+[lang=ar] .cc-hi h2{font-size:23px;line-height:1.5}
+.cc-hi p{font-size:14px;line-height:1.5;color:var(--c-text-2)}
+.cc-ctx{border:1.5px solid var(--c-brand);}
+.cc-ctx .eyebrow{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;font-weight:600;color:var(--c-brand-text)}
+.cc-ctx h2.h3{font:600 17px/1.4 "Readex Pro","IBM Plex Sans Arabic",Inter,sans-serif;margin:4px 0 2px}
+.cc-live{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--c-success)}
+.cc-live:before{content:"";width:8px;height:8px;border-radius:8px;background:currentColor;box-shadow:0 0 0 3px var(--c-success-weak)}
+.cc-live.off{color:var(--c-warning)}.cc-live.off:before{box-shadow:0 0 0 3px var(--c-warning-weak)}
+.chat{display:flex;flex-direction:column;gap:6px;margin:0 16px 16px}
+.chat-h{display:flex;gap:12px;align-items:center;margin:0 16px 12px;padding:10px 12px;border-radius:16px;background:var(--c-surface);border:1px solid var(--c-border)}
+.chat-h .b{flex:1;min-width:0;display:flex;flex-direction:column}
+.chat-h .t{font-weight:600;font-size:15px;line-height:1.4}
+.chat-h .s{font-size:12.5px;color:var(--c-text-2);line-height:1.4}
+.bub{max-width:84%;padding:10px 14px;border-radius:18px;border-end-start-radius:6px;font-size:15px;line-height:1.55;background:var(--c-surface);border:1px solid var(--c-border);align-self:flex-start;overflow-wrap:anywhere}
+.bub.me{align-self:flex-end;background:var(--c-brand);color:var(--c-text-on-brand);border-color:transparent;border-end-start-radius:18px;border-end-end-radius:6px}
+.bub.bot{background:var(--c-surface-2);border-color:transparent}
+.bub.note{background:var(--c-warning-weak);border:1px dashed var(--c-warning);color:var(--c-text);max-width:100%;align-self:stretch}
+.bub .tm{display:block;font-size:11.5px;line-height:1.4;margin-top:4px;color:var(--c-text-2)}
+.bub.me .tm{color:inherit;opacity:.92}
+.who{display:flex;gap:6px;align-items:center;font-size:12px;line-height:1.4;color:var(--c-text-2);margin-top:8px}
+.who .mini{width:22px;height:22px;border-radius:8px;display:grid;place-items:center;background:var(--c-brand-weak);color:var(--c-brand-text);font-size:11px;font-weight:700}
+.sysm{align-self:center;text-align:center;font-size:12.5px;line-height:1.45;color:var(--c-text-2);background:var(--c-surface-2);border-radius:999px;padding:4px 12px;margin:6px 0;max-width:92%}
+.chat .chips{margin:4px 0}
+.chat .ocard{align-self:flex-start;width:84%;max-width:360px;padding:12px 14px;border-radius:16px;background:var(--c-surface);border:1px solid var(--c-border);box-shadow:var(--e1)}
+.chat .ocard .row{padding:6px 0;min-height:0;border:0}
+.chat .ocard .btn{display:flex;width:auto;margin-top:6px}
+.att{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.att .atph{width:72px;height:72px;border-radius:12px;background:var(--c-surface-2);display:grid;place-items:center;color:var(--c-text-2);border:1px solid var(--c-border);position:relative}
+.bub.me .att .atph{background:color-mix(in srgb,var(--c-surface) 85%,transparent);color:var(--c-text)}
+.att .atph .x{position:absolute;top:-8px;inset-inline-end:-8px;width:28px;height:28px;border-radius:28px;background:var(--c-surface);border:1px solid var(--c-border-strong);display:grid;place-items:center;color:var(--c-text)}
+.typing{display:inline-flex;gap:4px;align-items:center}
+.typing i{width:7px;height:7px;border-radius:7px;background:var(--c-text-2);animation:ccdot 1.2s infinite var(--ease-standard)}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes ccdot{0%,60%,100%{opacity:.35}30%{opacity:1}}
+.composer{display:flex;gap:8px;align-items:center;width:100%}
+.composer .inp{flex:1;border-radius:999px;min-height:48px}
+.composer .ib{flex:none}
+.composer .ib.send{background:var(--c-brand);color:var(--c-text-on-brand);border-color:transparent}
+.rate{display:flex;gap:8px;justify-content:space-between;padding:8px 0}
+.rate button{flex:1;min-height:64px;border-radius:14px;border:1.5px solid var(--c-border-strong);background:var(--c-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;line-height:1.3;font-weight:500;color:var(--c-text);padding:6px 2px}
+.rate button .n{font:600 18px/1 Inter,sans-serif}
+.rate button[aria-checked=true]{background:var(--c-brand);border-color:var(--c-brand);color:var(--c-text-on-brand)}
+.sla{display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.sla .l{display:flex;justify-content:space-between;gap:10px;font-size:14px;line-height:1.45}
+.sla .l b{font-weight:600}
+.art-b{font-size:16px;line-height:1.65}
+.art-b h2.h3,.cc-ctx h2.h3{font:600 17px/1.45 "Readex Pro","IBM Plex Sans Arabic",Inter,sans-serif;margin:14px 0 4px}
+.art-b ol,.art-b ul{padding-inline-start:22px;margin:6px 0}
+.art-b li{margin:4px 0}
+.crumb{display:flex;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--c-text-2);margin:0 16px 8px}
+.helpful{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.helpful .q{flex:1 1 100%;font-weight:600}
+.zchip{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:1.4;font-weight:600;color:var(--c-text-2);border:1px solid var(--c-border);border-radius:8px;padding:2px 8px;background:var(--c-surface)}
+.zchip i{width:8px;height:8px;border-radius:8px;background:var(--c-success);display:inline-block}
+.zchip.warn i{background:var(--c-warning)}
+.tablet .body>.chat,.tablet .body>.chat-h,.tablet .body>.cc-hi,.tablet .body>.crumb{column-span:all;max-width:760px}
+.art-b a,.sysm a,.why a{text-decoration:underline;text-underline-offset:2px}
+.att .atph .x{width:44px;height:44px;top:-16px;inset-inline-end:-16px;border:0;background:radial-gradient(circle,var(--c-surface) 12px,var(--c-border-strong) 13px,var(--c-border-strong) 14px,transparent 14.5px)}
+
+.rate button{min-width:0;overflow-wrap:anywhere}

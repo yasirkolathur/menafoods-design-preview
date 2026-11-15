@@ -131,3 +131,19 @@ body{background-image:linear-gradient(var(--c-grid) 1px,transparent 1px),linear-
 [data-theme=dark] .card{background:linear-gradient(180deg,#141C26,var(--c-surface) 60%)}
 [data-area=rewards] .card.acct{border-top:2px solid var(--c-accent)}
 [data-area=rewards] .card.acct .hero .v{color:var(--c-accent-text)}
+
+/* ===== Customer Care · Pro Ops treatment (dense, console-like) ===== */
+.cc-hi{margin:0 12px 8px}.cc-hi h2{font-size:20px;line-height:1.35}
+.chat,.chat-h{margin-inline:12px}
+.chat-h{border-radius:6px;padding:8px 10px}
+.chat-h .avs,.who .mini{border-radius:4px}
+.bub{border-radius:6px;font-size:14px;line-height:1.5;padding:8px 12px;border-inline-start:3px solid var(--c-border-strong)}
+.bub.me{border-radius:6px;border-inline-start:0;border-inline-end:3px solid var(--c-brand-strong)}
+.bub.bot{border-inline-start-color:var(--c-info)}
+.bub .tm,.sysm,.zchip,.sla .l b{font-family:"IBM Plex Mono",ui-monospace,monospace;font-feature-settings:"tnum" 1}
+.sysm{border-radius:4px;font-size:12px}
+.chat .ocard{border-radius:6px;box-shadow:none}
+.rate button{border-radius:6px;min-height:56px}
+.composer .inp{border-radius:6px}
+.cc-ctx{border-radius:6px;border:1px solid var(--c-border);border-inline-start:3px solid var(--c-brand)}
+.att .atph{border-radius:4px}

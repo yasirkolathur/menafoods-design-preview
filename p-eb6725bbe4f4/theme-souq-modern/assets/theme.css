@@ -89,3 +89,18 @@
 [data-theme=dark][data-area=rewards] .card.acct{box-shadow:inset 0 0 0 3px #0E0907,inset 0 0 0 4px #8E6A2A}
 /* editorial product detail (ZARA / Wolt Market) */
 .card .img[style*="180px"]{height:220px!important;border-radius:120px 120px 8px 8px}
+
+/* ===== Customer Care · Souq Modern treatment ===== */
+.cc-hi h2{font-family:"Reem Kufi","IBM Plex Sans Arabic",Inter,sans-serif}
+.cc-ctx{border:1px solid var(--c-brand);border-top:4px solid var(--c-brand);border-radius:8px}
+.chat-h{border-radius:8px;box-shadow:inset 0 0 0 3px var(--c-surface),inset 0 0 0 4px var(--c-accent-weak)}
+.chat-h .avs,.who .mini{border-radius:999px 999px 6px 6px;clip-path:none}
+.bub{border-radius:14px 14px 14px 4px}
+[dir=rtl] .bub{border-radius:14px 14px 4px 14px}
+.bub.me{border-radius:14px 14px 4px 14px;box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--c-accent) 70%,transparent)}
+[dir=rtl] .bub.me{border-radius:14px 14px 14px 4px}
+.sysm{border-radius:6px;background:var(--c-accent-weak);color:var(--c-text)}
+.chat .ocard{border-radius:8px;border-top:3px solid var(--c-accent)}
+.rate button{border-radius:999px 999px 8px 8px}
+.rate button[aria-checked=true]{box-shadow:inset 0 -3px 0 var(--c-accent)}
+.zchip{border-radius:4px}
