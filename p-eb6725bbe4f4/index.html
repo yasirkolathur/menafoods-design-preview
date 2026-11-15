@@ -99,7 +99,7 @@ const T={
  newthemes:["New visual themes · full app","ثيمات بصرية جديدة · التطبيق كاملًا"], nw:["New","جديد"], dark1:["Dark-first","داكن أولًا"],
  earlier:["Earlier directions","الاتجاهات السابقة"],
  screens:["screens","شاشة"], open:["Open →","← افتح"],
- live:["Working preview","نسخة تجريبية تعمل"], openApp:["Open app","افتح التطبيق"], studio:["Design studio","استوديو التصميم"], care:["Customer care","خدمة العملاء"], tryT:["Try this","جرّب هذا"], clickable:["Clickable · actions simulated","قابل للنقر · الإجراءات محاكاة"],
+ live:["Working preview","نسخة تجريبية تعمل"], openApp:["Open app","افتح التطبيق"], seller:["Seller app","تطبيق البائع"], sellerD:["New: marketplace seller module (third-party sellers): onboarding, verification, listings, orders, payouts, plus admin approval.","جديد: وحدة بائعي السوق (البائعون الخارجيون): التسجيل والتحقق والمنتجات والطلبات والمدفوعات، مع موافقة الإدارة."], studio:["Design studio","استوديو التصميم"], care:["Customer care","خدمة العملاء"], tryT:["Try this","جرّب هذا"], clickable:["Clickable · actions simulated","قابل للنقر · الإجراءات محاكاة"],
  tryS:[["Tap “Owner” on the sign-in screen, add 3 items and place the order — watch its status move (or tap “Advance status”).","اضغط «المالك» في شاشة الدخول، أضف 3 أصناف وأتمّ الطلب — تابع تغيّر حالته (أو اضغط «تقديم الحالة»)."],["On the order, tap “Report a problem” — it appears in My requests with a timeline.","من الطلب اضغط «الإبلاغ عن مشكلة» — يظهر في طلباتي مع خط زمني."],["Rewards → redeem Free delivery for 500 points, then copy your referral link.","المكافآت ← استبدل التوصيل المجاني بـ 500 نقطة، ثم انسخ رابط الإحالة."],["Account → switch to Accountant → Invoice disputes → decide C-2294. Or try Salesperson → Customer 360.","الحساب ← بدّل إلى المحاسب ← اعتراضات الفواتير ← قرّر في C-2294. أو جرّب المندوب ← عرض العميل 360."]],
  limOld:["Every link and button responds. Data isn’t saved and actions like Pay or Submit are simulated (you’ll see a note). For the fully working app, use the Working preview themes.","كل رابط وزر يستجيب. البيانات لا تُحفظ والإجراءات مثل الدفع أو الإرسال محاكاة (ستظهر ملاحظة). للتطبيق العامل بالكامل استخدم ثيمات النسخة التجريبية التي تعمل."],
  rec:["Recommended","موصى به"], approved:["Approved","معتمد"], older:["Superseded","سابق"], p1:["Phase 1","المرحلة 1"], p2:["Phase 2","المرحلة 2"],
@@ -114,7 +114,7 @@ const THEMES=[
   name:["Pro Ops","العمليات الاحترافية"],
   d:["Dark-first console for power users: dense rows, monospaced numbers, KPI grids, live sync strip and 3-column tablet.","واجهة تشغيل داكنة للمستخدمين المحترفين: صفوف كثيفة وأرقام أحادية المسافة وشبكات مؤشرات وشريط مزامنة و3 أعمدة على الجهاز اللوحي."],
   chips:[["theme-pro-ops/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]],["theme-pro-ops/app.html#/cc.home",["New: Customer care","جديد: خدمة العملاء"]]]},
- {g:4,live:1,id:"theme-fresh-market",href:"theme-fresh-market/index.html",n:193,badges:["nw"],
+ {g:4,live:1,id:"theme-fresh-market",seller:1,href:"theme-fresh-market/index.html",n:193,badges:["nw"],
   name:["Fresh Market","السوق الطازج"],
   d:["Bright and photography-led: real product photos, leaf green with tomato and lemon, pillowy cards and a floating pill nav.","مشرق ويعتمد على الصور: صور منتجات حقيقية، وأخضر ورقي مع الطماطم والليمون، وبطاقات ناعمة وشريط تنقل عائم."],
   chips:[["theme-fresh-market/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]],["theme-fresh-market/app.html#/cc.home",["New: Customer care","جديد: خدمة العملاء"]]]},
@@ -138,10 +138,10 @@ const THEMES=[
  {g:3,id:"direction-a",href:"direction-a/index.html",n:55,badges:["older"],
   name:["Direction A · Quiet Pro","الاتجاه A · احترافي هادئ"],
   d:["The first reorder-first concept for buyers, sales and operations.","أول مفهوم لإعادة الطلب أولًا للمشترين والمبيعات والعمليات."]},
- {g:3,id:"direction-b",href:"direction-b/index.html",n:59,badges:["older"],
+ {g:3,id:"direction-b",seller:1,href:"direction-b/index.html",n:59,badges:["older"],
   name:["Direction B · Smart Basket","الاتجاه B · السلة الذكية"],
   d:["A guided assistant that builds the basket and walks through credit.","مساعد موجّه يجهّز السلة ويرشد خطوات الائتمان."]},
- {g:3,id:"direction-c",href:"direction-c/index.html",n:60,badges:["older"],
+ {g:3,id:"direction-c",seller:1,href:"direction-c/index.html",n:60,badges:["older"],
   name:["Direction C · Role Command Hubs","الاتجاه C · لوحات قيادة حسب الدور"],
   d:["A command hub for each role: buyer, sales, van, driver, store and accounts.","لوحة قيادة لكل دور: المشتري والمبيعات والمندوب والسائق والمستودع والحسابات."]}
 ];
@@ -164,7 +164,8 @@ function render(){
      <div class="top">${t.live?`<span class="badge live">${T.live[i]}</span>`:t.g>1&&t.id!=='v3-concepts'?`<span class="badge mut">${T.clickable[i]}</span>`:''}${t.badges.map(b=>`<span class="badge ${b==='rec'||b==='nw'?'':b==='approved'||b.startsWith('p')?'saf':'mut'}">${T[b][i]}</span>`).join('')}</div>
      <h2><a class="stretch" href="${withLang(t.href)}" style="color:inherit;text-decoration:none">${esc(t.name[i])}</a></h2>
      <p class="desc">${esc(t.d[i])}</p>
-     ${t.live?`<div class="acts"><a class="bp" href="${t.id}/app.html#/app.login?lang=${L}">${T.openApp[i]}</a><a class="bs" href="${withLang(t.href)}">${T.studio[i]}</a><a class="bs" href="${t.id}/app.html#/cc.home?lang=${L}">${T.care[i]}</a></div><div class="try"><b>${T.tryT[i]}</b><ol>${T.tryS.map(x=>`<li>${esc(x[i])}</li>`).join('')}</ol></div>`:''}
+     ${t.live?`<div class="acts"><a class="bp" href="${t.id}/app.html#/app.login?lang=${L}">${T.openApp[i]}</a><a class="bs" href="${withLang(t.href)}">${T.studio[i]}</a><a class="bs" href="${t.id}/app.html#/cc.home?lang=${L}">${T.care[i]}</a>${t.seller?`<a class="bs" href="${t.id}/seller.html?lang=${L}#/s.welcome">${T.seller[i]}</a>`:''}</div><div class="try"><b>${T.tryT[i]}</b><ol>${T.tryS.map(x=>`<li>${esc(x[i])}</li>`).join('')}</ol></div>`:''}
+     ${!t.live&&t.seller?`<div class="acts"><a class="bp" href="${t.id}/seller.html?lang=${L}#/s.welcome">${T.seller[i]}</a></div><p class="lim">${esc(T.sellerD[i])}</p>`:''}
      ${!t.live&&t.g>1?`<p class="lim">${esc(T.limOld[i])}</p>`:''}
      ${t.chips&&!t.live?`<div class="chips">${t.chips.map(c=>`<a class="chip" href="${withLang(c[0])}">${esc(c[1][i])}</a>`).join('')}</div>`:''}
      <div class="meta"><span><span class="num">${t.n}</span> ${T.screens[i]}</span><span class="open">${T.open[i]}</span></div>
