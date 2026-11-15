@@ -126,3 +126,8 @@ body{background-image:linear-gradient(var(--c-grid) 1px,transparent 1px),linear-
 [lang=ar] .ctx,[lang=ar] .foot,[lang=ar] .toast,[lang=ar] .offbar,[lang=ar] .kv dd,[lang=ar] .row .e,[lang=ar] .tbl td,[lang=ar] .ops{font-family:"IBM Plex Sans Arabic","Inter",sans-serif}
 .row .e .num,.row .e .money,.kv dd .num,.kv dd .money,.tbl td .num,.tbl td .money,.ops .num{font-family:"IBM Plex Mono",monospace}
 .ctx{font-size:13px}
+/* Mobbin bar: Copilot / WHOOP charts → gridlined charts, tinted panels */
+.bars{background-image:repeating-linear-gradient(to top,var(--c-border) 0 1px,transparent 1px 28px);background-position:0 -4px;border-bottom:1px solid var(--c-border-strong)}
+[data-theme=dark] .card{background:linear-gradient(180deg,#141C26,var(--c-surface) 60%)}
+[data-area=rewards] .card.acct{border-top:2px solid var(--c-accent)}
+[data-area=rewards] .card.acct .hero .v{color:var(--c-accent-text)}

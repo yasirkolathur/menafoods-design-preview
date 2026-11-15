@@ -95,3 +95,14 @@
 .tbl thead th:last-child{border-start-end-radius:12px;border-end-end-radius:12px}
 .fm-hero .sc{position:absolute;inset:0;background:linear-gradient(to right,rgba(248,242,230,.94) 0,rgba(248,242,230,.75) 45%,rgba(248,242,230,0) 72%)}
 [dir=rtl] .fm-hero .sc{background:linear-gradient(to left,rgba(248,242,230,.94) 0,rgba(248,242,230,.75) 45%,rgba(248,242,230,0) 72%)}
+/* Mobbin bar: Wolt / Blinkit / talabat product tiles → packshot on white + corner add button */
+.pt{position:relative}
+.pt .img{background:#fff}
+.pt .img .ph{object-fit:contain;padding:6px}
+.pt .act:has(> .add){position:absolute;top:96px;inset-inline-end:14px;margin:0;z-index:2}
+.pt .add{width:44px;height:44px;padding:0;border-radius:999px;box-shadow:0 4px 12px rgba(20,32,15,.25)}
+.pt .add span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+/* talabat-style lime savings + Chick-fil-A style rewards card */
+.pill.ok{background:#D9F99D;color:#1F3B0A}
+[data-theme=dark] .pill.ok{background:var(--c-success-weak);color:var(--c-success)}
+[data-area=rewards] .card.acct{background:var(--c-lemon);--c-text:#2B2400;--c-text-2:#4A4210;--c-surface-2:#F5D23C;color:#2B2400}
