@@ -384,3 +384,41 @@ main{scroll-padding-bottom:140px}html{scroll-padding-bottom:140px;scroll-padding
  .app:not(.wide):has(>.tabbar)>main{column-gap:16px}
  .app:has(>.tabbar) .sheet{max-width:560px}
 }
+/* ===== Review fixes round 2 (15 Nov 2026) ===== */
+/* M2: one fixed bar at a time on phones — task screens with an action dock hide the tab bar */
+@media(max-width:1023px){.app.has-dock>.tabbar{display:none}.app.has-dock .dock{bottom:0}}
+.tabs{scrollbar-width:thin;scroll-padding-inline:16px}
+.tabs::-webkit-scrollbar{height:4px}.tabs::-webkit-scrollbar-thumb{background:var(--ln);border-radius:4px}
+.rad input[type=radio],.chk input[type=checkbox],.ocard .obx,.hrs input[type=checkbox]{min-width:24px;min-height:24px}
+select.inp,.inp{min-height:44px}
+/* M12: masked IBAN is an isolated LTR run in Arabic */
+.iban{unicode-bidi:isolate;direction:ltr;display:inline-block;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* M3 / desktop list-and-detail */
+.ofilt{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}.ofilt .srch{flex:1 1 220px;margin:0;display:flex;flex-direction:column;align-items:stretch;gap:4px}.ofilt .tabs{padding:4px 0}
+.bulkbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ocard .obx{margin:6px;accent-color:var(--brand,var(--tx))}
+.ocard.on{outline:2px solid var(--brand,var(--tx));outline-offset:-2px}
+.ld-pane .pane-h{font-size:20px;margin:8px 16px}
+@media(min-width:1024px){.ld{display:grid;grid-template-columns:minmax(320px,400px) 1fr;gap:16px;align-items:start}.ld-list{max-height:calc(100vh - 220px);overflow:auto}.ld-pane{position:sticky;top:72px;max-height:calc(100vh - 100px);overflow:auto;border:1px solid var(--ln);border-radius:16px;background:var(--sf)}}
+/* M7 stepper + need list */
+.stepper ol{list-style:none;display:flex;gap:6px;overflow-x:auto;margin:0;padding:8px 16px 12px}
+.stepper button{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--ln);background:var(--sf);font-weight:600;font-size:14px;white-space:nowrap}
+.stepper button[aria-current=step]{background:var(--tx);color:var(--sf);border-color:var(--tx)}
+.stepper button.done .sn{background:var(--ok,#1a7f37);color:#fff}
+.stepper .sn{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ln);font-size:12px}
+.stepper button:focus-visible{outline:3px solid var(--focus,var(--info));outline-offset:1px}
+.need{list-style:none;margin:0;padding:0;display:grid;gap:10px}.need li{display:flex;gap:10px;align-items:flex-start}
+/* M4 hours, M5 POD, M6 perf, FEFO */
+.hrs{table-layout:fixed;width:100%}.hrs td,.hrs th{vertical-align:middle;padding-inline:4px}.hrs .inp{min-width:0;width:100%;padding-inline:4px;font-size:14px}.hrs th:nth-child(1){width:22%}.hrs th:nth-child(2){width:14%}.hrs input[type=time]::-webkit-calendar-picker-indicator{display:none}
+.podf{display:grid;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}.podf h3{margin:0;font-size:16px}
+.row.perf .pv{font-size:18px;margin-inline:8px;font-variant-numeric:tabular-nums}
+.row.inv .bt{display:block;flex-basis:100%;order:9;padding-inline-start:56px}
+.row.inv{flex-wrap:wrap}
+.clk.warn{color:var(--warn-tx,#8a5300)}
+/* M2: on phones the tab bar / action dock are fixed (not sticky) and the page reserves their height, so no target is ever left half-covered (WCAG 2.2 SC 2.5.8) */
+@media(max-width:1023px){
+ .app>.tabbar,.app>.dock{position:fixed;left:0;right:0;margin-inline:auto;max-width:inherit;width:100%;box-sizing:border-box}
+ .app>.tabbar{bottom:0}
+ .app>main{padding-bottom:calc(var(--barH,72px) + 12px)}
+ html{scroll-padding-bottom:calc(var(--barH,72px) + 24px)}
+}
