@@ -93,7 +93,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--mut);font-
 const T={
  banner:["Design preview · sample data only · not the live MENAFoods app","معاينة تصميم · بيانات تجريبية فقط · ليس تطبيق مينا فودز الفعلي"],
  title:["MENAFoods design themes","ثيمات تصميم مينا فودز"],
- sub:["The 4 full builds are now working previews: sign in with a sample account, place orders, raise requests and redeem points — saved on your device, sample data only. Pick a theme to open it. Inside each one you can switch role, language, light or dark, phone or tablet, and PWA, Android or iOS.","البُنى الأربع الكاملة أصبحت نسخًا تجريبية تعمل: ادخل بحساب تجريبي واطلب وارفع الطلبات واستبدل النقاط — تُحفظ على جهازك وبيانات تجريبية فقط. اختر ثيمًا لفتحه. داخل كل ثيم يمكنك تغيير الدور واللغة والوضع الفاتح أو الداكن والجوال أو الجهاز اللوحي وPWA أو أندرويد أو iOS."],
+ sub:["The 4 full builds are now working previews: sign in with a sample account, place orders, raise requests and redeem points — saved on your device, sample data only. Pick a theme to open it. Inside each one you can switch role, language, light or dark, phone or tablet, and PWA, Android or iOS. Every screen has a “Switch theme” button that keeps your screen and language and brings you back here.","البُنى الأربع الكاملة أصبحت نسخًا تجريبية تعمل: ادخل بحساب تجريبي واطلب وارفع الطلبات واستبدل النقاط — تُحفظ على جهازك وبيانات تجريبية فقط. اختر ثيمًا لفتحه. داخل كل ثيم يمكنك تغيير الدور واللغة والوضع الفاتح أو الداكن والجوال أو الجهاز اللوحي وPWA أو أندرويد أو iOS. في كل شاشة زر «تغيير النمط» يحافظ على شاشتك ولغتك ويعيدك إلى هنا."],
  latest:["Approved direction","الاتجاه المعتمد"],
  phases:["Phase prototypes","نماذج المراحل"],
  newthemes:["New visual themes · full app","ثيمات بصرية جديدة · التطبيق كاملًا"], nw:["New","جديد"], dark1:["Dark-first","داكن أولًا"],
@@ -145,7 +145,7 @@ const THEMES=[
   name:["Direction C · Role Command Hubs","الاتجاه C · لوحات قيادة حسب الدور"],
   d:["A command hub for each role: buyer, sales, van, driver, store and accounts.","لوحة قيادة لكل دور: المشتري والمبيعات والمندوب والسائق والمستودع والحسابات."]}
 ];
-let L=(()=>{try{const s=localStorage.getItem('mfp.lang');if(s)return s}catch(e){}return (navigator.language||'en').toLowerCase().startsWith('ar')?'ar':'en'})();
+let L=(()=>{const u=new URLSearchParams(location.search).get('lang');if(u==='ar'||u==='en'){try{localStorage.setItem('mfp.lang',u)}catch(e){}return u}try{const s=localStorage.getItem('mfp.lang');if(s)return s}catch(e){}return (navigator.language||'en').toLowerCase().startsWith('ar')?'ar':'en'})();
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function withLang(h){ // pass chosen language to prototypes
   if(h.includes('concepts/')) return h+(h.includes('#')?'&':'#')+'l='+L;
