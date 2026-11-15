@@ -50,6 +50,17 @@ h2{font-family:Readex,PlexAr,sans-serif;font-size:18px;font-weight:600;margin:0;
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .chip{position:relative;z-index:2;font-size:13px;font-weight:600;color:var(--brand);border:1px solid var(--line);border-radius:999px;padding:0 12px;min-height:36px;display:inline-flex;align-items:center;text-decoration:none;background:var(--card)}
 .stretch::after{content:"";position:absolute;inset:0}
+.live{background:var(--brand);color:#fff;display:inline-flex;align-items:center;gap:6px}
+.live::before{content:"";width:8px;height:8px;border-radius:50%;background:#7CF0B8;box-shadow:0 0 0 3px rgba(124,240,184,.35)}
+.acts{position:relative;z-index:2;display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.bp{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:12px;background:var(--brand);color:#fff;font-weight:700;font-size:15px;text-decoration:none}
+.bs{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);color:var(--brand);font-weight:600;font-size:14px;text-decoration:none;background:var(--card)}
+.bp:focus-visible,.bs:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+@media (prefers-color-scheme:dark){.bp,.live{color:#0C100E}}
+.try{position:relative;z-index:2;margin:8px 0 0;padding:10px 12px;border-radius:12px;background:var(--brand2);font-size:13.5px}
+.try b{display:block;font-size:13px;margin-bottom:4px}
+.try ol{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:3px}
+.lim{font-size:13px;color:var(--mut);margin:4px 0 0;padding:8px 10px;border-inline-start:3px solid var(--line)}
 footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--mut);font-size:13px}
 @media (max-width:560px){header{flex-direction:column}.lang{align-self:stretch}.lang button{flex:1}}
 @media (prefers-reduced-motion:reduce){.card{transition:none}}
@@ -82,29 +93,32 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--mut);font-
 const T={
  banner:["Design preview · sample data only · not the live MENAFoods app","معاينة تصميم · بيانات تجريبية فقط · ليس تطبيق مينا فودز الفعلي"],
  title:["MENAFoods design themes","ثيمات تصميم مينا فودز"],
- sub:["Pick a theme to open its clickable prototype. Inside each one you can switch role, language, light or dark, phone or tablet, and PWA, Android or iOS.","اختر ثيمًا لفتح النموذج التفاعلي. داخل كل ثيم يمكنك تغيير الدور واللغة والوضع الفاتح أو الداكن والجوال أو الجهاز اللوحي وPWA أو أندرويد أو iOS."],
+ sub:["The 4 full builds are now working previews: sign in with a sample account, place orders, raise requests and redeem points — saved on your device, sample data only. Pick a theme to open it. Inside each one you can switch role, language, light or dark, phone or tablet, and PWA, Android or iOS.","البُنى الأربع الكاملة أصبحت نسخًا تجريبية تعمل: ادخل بحساب تجريبي واطلب وارفع الطلبات واستبدل النقاط — تُحفظ على جهازك وبيانات تجريبية فقط. اختر ثيمًا لفتحه. داخل كل ثيم يمكنك تغيير الدور واللغة والوضع الفاتح أو الداكن والجوال أو الجهاز اللوحي وPWA أو أندرويد أو iOS."],
  latest:["Approved direction","الاتجاه المعتمد"],
  phases:["Phase prototypes","نماذج المراحل"],
  newthemes:["New visual themes · full app","ثيمات بصرية جديدة · التطبيق كاملًا"], nw:["New","جديد"], dark1:["Dark-first","داكن أولًا"],
  earlier:["Earlier directions","الاتجاهات السابقة"],
  screens:["screens","شاشة"], open:["Open →","← افتح"],
+ live:["Working preview","نسخة تجريبية تعمل"], openApp:["Open app","افتح التطبيق"], studio:["Design studio","استوديو التصميم"], care:["Customer care","خدمة العملاء"], tryT:["Try this","جرّب هذا"], clickable:["Clickable · actions simulated","قابل للنقر · الإجراءات محاكاة"],
+ tryS:[["Tap “Owner” on the sign-in screen, add 3 items and place the order — watch its status move (or tap “Advance status”).","اضغط «المالك» في شاشة الدخول، أضف 3 أصناف وأتمّ الطلب — تابع تغيّر حالته (أو اضغط «تقديم الحالة»)."],["On the order, tap “Report a problem” — it appears in My requests with a timeline.","من الطلب اضغط «الإبلاغ عن مشكلة» — يظهر في طلباتي مع خط زمني."],["Rewards → redeem Free delivery for 500 points, then copy your referral link.","المكافآت ← استبدل التوصيل المجاني بـ 500 نقطة، ثم انسخ رابط الإحالة."],["Account → switch to Accountant → Invoice disputes → decide C-2294. Or try Salesperson → Customer 360.","الحساب ← بدّل إلى المحاسب ← اعتراضات الفواتير ← قرّر في C-2294. أو جرّب المندوب ← عرض العميل 360."]],
+ limOld:["Every link and button responds. Data isn’t saved and actions like Pay or Submit are simulated (you’ll see a note). For the fully working app, use the Working preview themes.","كل رابط وزر يستجيب. البيانات لا تُحفظ والإجراءات مثل الدفع أو الإرسال محاكاة (ستظهر ملاحظة). للتطبيق العامل بالكامل استخدم ثيمات النسخة التجريبية التي تعمل."],
  rec:["Recommended","موصى به"], approved:["Approved","معتمد"], older:["Superseded","سابق"], p1:["Phase 1","المرحلة 1"], p2:["Phase 2","المرحلة 2"],
  foot:["For review only. All businesses, prices, stock and amounts are fictional. No live systems are connected.","للمراجعة فقط. جميع الأنشطة والأسعار والمخزون والمبالغ وهمية. لا يوجد اتصال بأي نظام فعلي."]
 };
 const THEMES=[
- {g:4,id:"theme-souq-modern",href:"theme-souq-modern/index.html",n:193,badges:["nw"],
+ {g:4,live:1,id:"theme-souq-modern",href:"theme-souq-modern/index.html",n:193,badges:["nw"],
   name:["Souq Modern","السوق العصري"],
   d:["Warm Saudi heritage: terracotta and sand, Sadu-weave bands, 8-point star lattice, arch shapes and Reem Kufi headings.","تراث سعودي دافئ: الطين والرمل، وشرائط السدو، ونقش النجمة الثمانية، والأقواس، وعناوين بخط ريم كوفي."],
   chips:[["theme-souq-modern/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]],["theme-souq-modern/app.html#/cc.home",["New: Customer care","جديد: خدمة العملاء"]]]},
- {g:4,id:"theme-pro-ops",href:"theme-pro-ops/index.html",n:193,badges:["nw","dark1"],
+ {g:4,live:1,id:"theme-pro-ops",href:"theme-pro-ops/index.html",n:193,badges:["nw","dark1"],
   name:["Pro Ops","العمليات الاحترافية"],
   d:["Dark-first console for power users: dense rows, monospaced numbers, KPI grids, live sync strip and 3-column tablet.","واجهة تشغيل داكنة للمستخدمين المحترفين: صفوف كثيفة وأرقام أحادية المسافة وشبكات مؤشرات وشريط مزامنة و3 أعمدة على الجهاز اللوحي."],
   chips:[["theme-pro-ops/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]],["theme-pro-ops/app.html#/cc.home",["New: Customer care","جديد: خدمة العملاء"]]]},
- {g:4,id:"theme-fresh-market",href:"theme-fresh-market/index.html",n:193,badges:["nw"],
+ {g:4,live:1,id:"theme-fresh-market",href:"theme-fresh-market/index.html",n:193,badges:["nw"],
   name:["Fresh Market","السوق الطازج"],
   d:["Bright and photography-led: real product photos, leaf green with tomato and lemon, pillowy cards and a floating pill nav.","مشرق ويعتمد على الصور: صور منتجات حقيقية، وأخضر ورقي مع الطماطم والليمون، وبطاقات ناعمة وشريط تنقل عائم."],
   chips:[["theme-fresh-market/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]],["theme-fresh-market/app.html#/cc.home",["New: Customer care","جديد: خدمة العملاء"]]]},
- {g:1,id:"redesign-v3",href:"redesign-v3/index.html",n:193,badges:["rec","approved"],rec:1,
+ {g:1,live:1,id:"redesign-v3",href:"redesign-v3/index.html",n:193,badges:["rec","approved"],rec:1,
   name:["Calm Commerce · v3 (full app)","التجارة الهادئة · الإصدار 3 (التطبيق كاملًا)"],
   d:["The approved redesign of the whole app: ordering, credit, rewards, Business Hub and every staff role.","إعادة التصميم المعتمدة للتطبيق كاملًا: الطلب والائتمان والمكافآت ومركز الأعمال وكل أدوار الموظفين."],
   chips:[["redesign-v3/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]],["redesign-v3/app.html#/cc.home",["New: Customer care","جديد: خدمة العملاء"]]]},
@@ -135,6 +149,7 @@ let L=(()=>{try{const s=localStorage.getItem('mfp.lang');if(s)return s}catch(e){
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function withLang(h){ // pass chosen language to prototypes
   if(h.includes('concepts/')) return h+(h.includes('#')?'&':'#')+'l='+L;
+  if((h.startsWith('redesign-v3/')||h.startsWith('theme-'))&&h.includes('#')) return h+(h.includes('?')?'&':'?')+'lang='+L;
   if(h.startsWith('redesign-v3/')||h.startsWith('theme-')) return h+'#/b.home?lang='+L;
   return h;}
 function render(){
@@ -146,10 +161,12 @@ function render(){
    <article class="card${t.rec?' rec':''}">
     <div class="thumb"><img src="thumbs/${t.id}${i?"":"-en"}.webp" alt="" loading="lazy" width="480" height="600"></div>
     <div class="body">
-     <div class="top">${t.badges.map(b=>`<span class="badge ${b==='rec'||b==='nw'?'':b==='approved'||b.startsWith('p')?'saf':'mut'}">${T[b][i]}</span>`).join('')}</div>
+     <div class="top">${t.live?`<span class="badge live">${T.live[i]}</span>`:t.g>1&&t.id!=='v3-concepts'?`<span class="badge mut">${T.clickable[i]}</span>`:''}${t.badges.map(b=>`<span class="badge ${b==='rec'||b==='nw'?'':b==='approved'||b.startsWith('p')?'saf':'mut'}">${T[b][i]}</span>`).join('')}</div>
      <h2><a class="stretch" href="${withLang(t.href)}" style="color:inherit;text-decoration:none">${esc(t.name[i])}</a></h2>
      <p class="desc">${esc(t.d[i])}</p>
-     ${t.chips?`<div class="chips">${t.chips.map(c=>`<a class="chip" href="${withLang(c[0])}">${esc(c[1][i])}</a>`).join('')}</div>`:''}
+     ${t.live?`<div class="acts"><a class="bp" href="${t.id}/app.html#/app.login?lang=${L}">${T.openApp[i]}</a><a class="bs" href="${withLang(t.href)}">${T.studio[i]}</a><a class="bs" href="${t.id}/app.html#/cc.home?lang=${L}">${T.care[i]}</a></div><div class="try"><b>${T.tryT[i]}</b><ol>${T.tryS.map(x=>`<li>${esc(x[i])}</li>`).join('')}</ol></div>`:''}
+     ${!t.live&&t.g>1?`<p class="lim">${esc(T.limOld[i])}</p>`:''}
+     ${t.chips&&!t.live?`<div class="chips">${t.chips.map(c=>`<a class="chip" href="${withLang(c[0])}">${esc(c[1][i])}</a>`).join('')}</div>`:''}
      <div class="meta"><span><span class="num">${t.n}</span> ${T.screens[i]}</span><span class="open">${T.open[i]}</span></div>
     </div></article>`).join('')});
 }

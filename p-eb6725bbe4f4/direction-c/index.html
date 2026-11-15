@@ -77,5 +77,6 @@ document.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b
 addEventListener('message',e=>{ const d=e.data; if(!d||!d.mf) return; const ch=d.s!==st.s||d.st!==st.st||d.v!==st.v||d.r!==st.r; Object.assign(st,{r:d.r,s:d.s,st:d.st,v:d.v}); { const h2=new URLSearchParams({r:st.r,s:st.s,st:st.st,v:st.v,p:st.p}); if(st.l)h2.set('l',st.l); document.getElementById('stage').dataset.h=h2.toString(); } if(st.l&&d.l!==st.l) st.l=d.l; if(ch) draw(); else draw(); });
 draw();
 </script>
+<script src="assets/proto-live.js"></script>
 </body>
 </html>
