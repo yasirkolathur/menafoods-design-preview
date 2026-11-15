@@ -521,3 +521,15 @@ body:has(.cartpill) .toast{bottom:170px}
 body:has(.dock) .toast{bottom:170px}
 .tablet .toast{bottom:32px}
 .lv-u{text-decoration:underline;text-underline-offset:2px;font-weight:600;color:inherit}
+/* Mobbin-referenced staff revisions */
+.lv-note{display:flex;gap:6px;align-items:center;margin-top:4px;color:var(--c-text-2)}
+.lv-ok{text-align:center;display:flex;flex-direction:column;align-items:center}
+.lv-ok .kv{align-self:stretch;text-align:start;margin-top:10px}
+.lv-okic{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--c-success);color:#fff}
+.lv-amt{font-size:32px;line-height:1.2;margin:4px 0 0;font-weight:700}
+.lv-base{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid var(--c-text);margin-top:-36px;padding:0 10px;position:relative;font-size:18px}
+.lv-cur{margin-top:6px;display:inline-block;align-self:flex-start}
+.lv-tiles2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 16px}
+.lv-tiles2 .btn{flex-direction:column;min-height:64px}
+.composer .field{flex:1;margin:0}
+.composer{display:flex;gap:8px;align-items:flex-end}

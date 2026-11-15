@@ -371,3 +371,61 @@ ACT.adecide=id=>{ const s=S(); const a=s.apps.find(x=>x.id===id); const d=L.val(
  else { a.st='declined'; a.reason=[n,n]; a.log.push({ts:now(),who:isM?'mgr':'acct',k:isM?'mgr-no':'acct-no',txt:n}); if(live) L.notify('shield',[`Credit request ${id} not approved`,`لم يُعتمد طلب الائتمان ${id}`],['b.creditStatus',{id}]); msg=t('Declined · customer notified','رُفض · أُبلغ العميل'); }
  L.save(); go(isM?'m.inbox':'a.inbox',isM?{}:{v:'done'}); setTimeout(()=>toast(msg),80); };
 })();
+/* Mobbin-referenced revisions for staff/seller pages (references listed in the design report). SAMPLE DATA. */
+(function(){
+'use strict';
+const MF=window.MF, L=MF.L; if(!L||!L.CUST) return;
+const {t,tt,H,M,N,I,LTR,href}=MF; const S=()=>L.S(); const ACT=L.ACT; const {esc,tm,dt,ago,go,toast,qp,T2,pn}=L; const P0=()=>MF.DATA.P;
+const cst=id=>L.CUST.find(x=>x.id===id)||L.CUST[0];
+const AREA={alwadi:['Olaya, Riyadh','العليا، الرياض'],kunafa:['Olaya St, Riyadh','شارع العليا، الرياض'],nakheel:['Tahlia St, Riyadh','شارع التحلية، الرياض'],qahwa:['Al Malqa, Riyadh','الملقا، الرياض'],bahr:['Hittin, Riyadh','حطين، الرياض']};
+const NOTE0={alwadi:['Gold account · prefers 7–9 AM delivery','حساب ذهبي · يفضل التوصيل 7–9 ص'],kunafa:['Seasonal peak in Ramadan','ذروة موسمية في رمضان'],nakheel:['Overdue — collect before new credit orders','متأخر — حصّل قبل طلبات ائتمان جديدة'],qahwa:['New account · trial order next week','حساب جديد · طلب تجريبي الأسبوع القادم'],bahr:['Buys seafood sides in bulk','يشتري الأطباق الجانبية بكميات']};
+const noteOf=id=>{ const n=S().field.notes&&S().field.notes[id]; return n!=null?n:T2(NOTE0[id]||['','']); };
+const cfin=cu=>{ if(cu.live){ const cr=L.credit(); return {bal:cr.used,limit:cr.limit,od:cr.overdue}; } return {bal:cu.bal,limit:cu.limit,od:cu.risk?1200:0}; };
+const nOrd=cu=>cu.live?S().orders.length:({kunafa:14,nakheel:9,qahwa:0,bahr:22}[cu.id]||0);
+
+/* s.customers — ref: Shopify iOS "Customers" list (name / location / spend • orders / status pill / note line) */
+const row=cu=>{ const fi=cfin(cu); const n=noteOf(cu.id); return {av:T2(cu.n).slice(0,1),t:T2(cu.n),s:`${T2(AREA[cu.id]||['',''])}<br>${M(fi.bal,'',0)} ${t('balance','رصيد')} • ${N(nOrd(cu))} ${t('orders','طلبات')}`,x:n?`<span class="s lv-note">${I('doc',14)} ${esc(n)}</span>`:'',pill:fi.od>0?['bad',t('Overdue','متأخر')]:cu.isNew?['info',t('New','جديد')]:['ok',T2(cu.tier)],go:'c.360',q:{cust:cu.id}}; };
+const list=q=>{ const f=L.ui.cf||'all'; const A=L.CUST.filter(cu=>(f==='all'||(f==='risk'&&(cu.risk||cfin(cu).od>0))||(f==='new'&&cu.isNew))&&(!q||(cu.n[0]+' '+cu.n[1]).toLowerCase().includes(q.toLowerCase()))); return A.length?H.sec('',H.rows(A.map(row))):H.empty('users',t('No customers match','لا عملاء مطابقون'),t('Try another name or clear the filter.','جرّب اسمًا آخر أو أزل التصفية.')); };
+L.liveFn.cust=v=>list(v);
+L.def('s.customers',{render:()=>`<div class="search" role="search">${I('search',20)}<label class="vh" for="csq">${t('Search customers','ابحث في العملاء')}</label><input id="csq" type="search" data-live="cust" data-tgt="cres" autocomplete="off" placeholder="${t('Search customers','ابحث في العملاء')}"></div>`+L.chipsA('cf',[['all',t('All','الكل')],['risk',t('Overdue','متأخر')],['new',t('New','جدد')]],L.ui.cf||'all',t('Filter','تصفية'))+`<div id="cres">${list('')}</div>`});
+
+/* c.360 — ref: Shopify iOS customer detail (Note card with Edit; Order history; staff-only Timeline with comment composer) */
+const d360=MF.SCR['c.360']; const r360=d360.render;
+d360.render=c=>{ const o=r360(c); const cu=cst(qp('cust')||'alwadi'); const n=noteOf(cu.id);
+ const noteCard=H.sec(t('Note','ملاحظة'),`<div class="card pad">${L.ui.noteEdit?`${L.fld('cnote',t('Note','ملاحظة'),{ta:true,val:n})}<div class="btns" style="margin-top:8px">${L.ab(t('Save','احفظ'),'cnotesave',cu.id,{sm:true})}${L.ab(t('Cancel','إلغاء'),'cnoteedit',null,{sm:true,k:'sec'})}</div>`:`<p style="margin:0">${n?esc(n):`<span class="neu">${t('No note yet','لا ملاحظة بعد')}</span>`}</p>`}</div>`,{raw:true,right:L.ui.noteEdit?'':`<button type="button" class="lv-link" data-act="cnoteedit">${t('Edit','تعديل')}</button>`});
+ let b=typeof o==='string'?o:o.b;
+ if(c.v==='overview'){ const i=b.indexOf('<div class="kpis">'); b=i>=0?b.slice(0,i)+noteCard+b.slice(i):noteCard+b; }
+ if(c.v==='activity') b+=H.sec('',`<div class="card pad"><p class="s neu" style="margin:0 0 8px">${t('Only you and other staff can see notes','أنت والموظفون فقط ترون الملاحظات')}</p><div class="composer">${L.fld('ccmt',t('Leave a note','اكتب ملاحظة'),{ph:t('Leave a note…','اكتب ملاحظة…')})}${L.ab(t('Post','انشر'),'ccmtgo',cu.id,{sm:true,ic:'msg'})}</div></div>`,{raw:true});
+ return typeof o==='string'?b:{b,dock:o.dock}; };
+ACT.cnoteedit=()=>{ L.ui.noteEdit=!L.ui.noteEdit; L.rr(); };
+ACT.cnotesave=id=>{ const s=S(); s.field.notes=s.field.notes||{}; s.field.notes[id]=L.val('cnote'); L.ui.noteEdit=false; L.save(); L.rr(); toast(t('Note saved','حُفظت الملاحظة')); };
+ACT.ccmtgo=id=>{ L.clearBad(); const v=L.val('ccmt'); if(!v){ L.bad('ccmt',t('Write a note first','اكتب ملاحظة أولًا')); L.focusBad(); return; } S().field.acts.unshift({ts:Date.now(),cust:id,who:L.acc(MF.C.role)[1].split(' ')[0],k:'note',txt:[`Note · ${v}`,`ملاحظة · ${v}`]}); L.save(); L.rr(); toast(t('Note posted','نُشرت الملاحظة')); };
+
+/* v.issued — ref: Setel "Transaction successful" receipt (check, big amount, detail rows, Share receipt in card) */
+L.def('v.issued',{render:()=>{ const v=S().van; const x=v.inv.find(i=>i.id===qp('id'))||v.inv[0]; if(!x) return H.empty('doc',t('No van invoices yet','لا فواتير فان بعد'),'',H.btns(H.btn(t('New van invoice','فاتورة فان جديدة'),{go:'v.sale'})));
+ return `<div role="status" class="sec"><div class="card pad lv-ok"><span class="lv-okic" aria-hidden="true">${I('check',28)}</span><p class="neu" style="margin:6px 0 0">${x.queued?t('Saved offline · will sync','حُفظت دون اتصال · ستُزامن'):t('Invoice issued','صدرت الفاتورة')}</p><p class="lv-amt disp">${M(x.tot)}</p>${H.kv([[t('Invoice','الفاتورة'),LTR(x.id)],[t('Time','الوقت'),tm(x.ts)],[t('Customer','العميل'),T2(x.cust)],[t('Payment','الدفع'),x.pay==='credit'?t('On account','على الحساب'):x.pay==='mada'?'mada':t('Cash','نقد')],[t('Items','الأصناف'),N(Object.values(x.items).reduce((a,b)=>a+b,0))]])}<div style="display:flex;gap:14px;align-items:center;margin:10px 0"><div style="width:84px;flex:none">${H.qr(t('Invoice QR (sample)','رمز الفاتورة (تجريبي)'),x.id.length*7)}</div><p class="s neu" style="margin:0">${t('ZATCA QR (sample) — customer can scan to verify.','رمز هيئة الزكاة (تجريبي) — يمكن للعميل مسحه للتحقق.')}</p></div>${L.ab(t('Share receipt','شارك الإيصال'),'vshare',x.id,{k:'sec',block:true,ic:'share'})}</div></div>`+H.btns(L.ab(t('Print','اطبع'),'vprint',x.id,{k:'sec',ic:'printer'}),H.btn(t('New sale','بيع جديد'),{go:'v.sale',ic:'plus'})); }});
+
+/* d.route — ref: DoorDash Dasher "Current dash" (map on top, task rows "Deliver to … / by time", "Current task" tag) */
+L.def('d.route',{render:()=>{ const R=S().route; const dn=R.filter(x=>x.st==='done').length; const nx=R.find(x=>x.st==='next');
+ const rows=R.map((x,i)=>({ic:x.st==='done'?'check':x.st==='failed'?'alert':'store',tone:x.st==='done'?'ok':x.st==='failed'?'bad':x.st==='next'?'brand':'',t:`${t('Deliver to','سلّم إلى')} ${T2(x.n)}`,s:`${t('Stop','المحطة')} ${i+1} · ${x.st==='done'&&x.ts?t('Delivered','سُلّم')+' '+tm(x.ts):x.st==='failed'?t('Not delivered','لم يُسلّم'):t('by 11:00 AM','قبل 11:00 ص')} · #${x.order}${x.cold?' · '+t('chilled','مبرد'):''}`,x:x.st==='next'?`<span class="pill info lv-cur">${t('Current task','المهمة الحالية')}</span>`:'',go:'d.stop',q:{id:x.id}}));
+ return `<div class="sec">${H.map(t('Route map (sample)','خريطة المسار (تجريبية)'),R.length)}</div>`+H.sec('',`<div class="card pad">${H.meter([[dn/R.length*100,'brand']],t(`${dn} of ${R.length} delivered`,`${dn} من ${R.length} سُلّمت`))}<p class="s neu" style="margin:6px 0 0">${t(`${dn} of ${R.length} stops delivered`,`سُلّمت ${dn} من ${R.length} محطات`)}</p></div>`,{raw:true})+H.sec(t('Tasks','المهام'),H.rows(rows))+(nx?H.btns(H.btn(t('Open current task','افتح المهمة الحالية'),{go:'d.stop',q:{id:nx.id},ic:'route'})):''); }});
+
+/* d.pod signature — ref: DoorDash Dasher "A recipient signature is required" (pad, ✕ baseline with Clear, consent line, Submit) */
+L.post.push(c=>{ if(c.id!=='d.pod') return; const cv=document.querySelector('.lv-sig'); if(!cv||cv.parentElement.querySelector('.lv-base')) return; cv.insertAdjacentHTML('afterend',`<div class="lv-base"><span aria-hidden="true">✕</span><button type="button" class="lv-link" data-act="sigclr">${t('Clear','امسح')}</button></div><p class="s neu" style="margin:6px 0 0">${t('By signing, the receiver confirms the items above arrived in good condition. This is not a tax invoice.','بالتوقيع يؤكد المستلم وصول الأصناف أعلاه بحالة جيدة. هذا ليس فاتورة ضريبية.')}</p>`); const old=cv.closest('[data-f=sig]').nextElementSibling; if(old&&old.classList.contains('btns')){ const cl=old.querySelector('[data-act=sigclr]'); cl&&cl.remove(); } });
+
+/* k.pick — ref: Target "List" (Scan/Add tiles on top, checkbox rows "Qty N - Aisle X", primary "Send N to cart") */
+const pk=id=>S().picks.find(x=>x.id===id); const dk=MF.SCR['k.pick']; const rk=dk.render;
+dk.render=c=>{ const o=rk(c); const p=pk(qp('id'))||S().picks.find(x=>x.st==='open'||x.st==='picking')||S().picks[0]; if(typeof o==='string') return o; const nx=p.lines.findIndex(l=>l.got<l.q&&!l.short);
+ const top=`<div class="lv-tiles2">${nx>=0?L.ab(t('Scan next','امسح التالي'),'kscan',p.id+'|'+nx,{k:'sec',ic:'scan'}):''}${L.ab(t('Wrong scan (demo)','مسح خاطئ (عرض)'),'kwrong',p.id,{k:'sec',ic:'alert'})}</div>`;
+ let b=o.b.replace(/<div class="btns">[^]*?data-act="kwrong"[^]*?<\/div>/,''); const i=b.indexOf('<section'); const j=b.indexOf('<section',i+1); b=j>0?b.slice(0,j)+top+b.slice(j):b+top;
+ const done=p.lines.filter(l=>l.got>=l.q||l.short).length; return {b,dock:L.ab(t(`Complete pick · ${done} of ${p.lines.length} lines`,`أكمل التجهيز · ${done} من ${p.lines.length} بنود`),'kdone',p.id,{block:true,dis:!done})}; };
+
+/* a.case / m.case — ref: Airwallex & Remote approval detail (timeline with "Current step", Approve primary + Decline secondary; reject asks reason) */
+['a.case','m.case'].forEach(id=>{ const d=MF.SCR[id]; const r=d.render; d.render=c=>{ const o=r(c); if(typeof o==='string') return o; const a=S().apps.find(x=>x.id===qp('id'))||S().apps.find(x=>x.st===(id==='m.case'?'mgr':'acct'));
+ const b=o.b.replace(/<section class="sec\s*"[^>]*><div class="sec-h"><h2>(Your decision|قرارك)<\/h2>[^]*$/,'')+H.sec('',`<div style="padding:12px 16px">${L.fld('anote',t('Note to customer (optional when approving)','ملاحظة للعميل (اختيارية عند الاعتماد)'),{ta:true})}</div>`);
+ const rec=id==='a.case'&&a.route==='mgr';
+ return {b,dock:`${L.ab(t('Decline','رفض'),'adecl',a.id,{k:'sec',ic:'x'})}${L.ab(rec?t('Recommend','أوصِ'):t('Approve','اعتماد'),'aok',a.id+'|'+(rec?'rec':'ok'),{ic:'check'})}`}; }; });
+const decide=(id,k)=>{ document.body.insertAdjacentHTML('beforeend',`<fieldset hidden><input type="radio" name="adec" value="${k}" checked></fieldset>`); const fs=document.body.lastElementChild; ACT.adecide(id); fs&&fs.remove(); };
+ACT.aok=a=>{ const [id,k]=a.split('|'); decide(id,k); };
+ACT.adecl=id=>{ const n=L.val('anote'); if(!n){ L.bad('anote',t('Add a reason — the customer sees it','أضف سببًا — يراه العميل')); L.focusBad(); toast(t('A reason is required to decline','السبب مطلوب للرفض')); return; } decide(id,'no'); };
+})();
