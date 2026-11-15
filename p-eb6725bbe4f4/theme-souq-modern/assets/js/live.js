@@ -203,7 +203,7 @@ function post(){
  const f=document.querySelector('.foot'); if(f) f.innerHTML=`${I('info',14)}<span>${t('Working preview · sample data saved on this device · not real prices or stock','نسخة تجريبية تعمل · بيانات تجريبية محفوظة على هذا الجهاز · ليست أسعارًا أو مخزونًا حقيقيًا')} · <a class="lv-u" href="${href('app.me')}">${t('Demo controls','أدوات العرض')}</a></span>`;
  /* header: language toggle + account on root screens */
  const tb=document.querySelector('header.tb .tbr'); const root=document.querySelector('header.tb.root');
- if(tb && c.id!=='app.login'){ const sp=tb.querySelector('.sp,.sp0'); const lang=`<button type="button" class="ib" data-act="lang" aria-label="${c.ar?'Switch to English':'التبديل إلى العربية'}"><span class="lvl" aria-hidden="true">${c.ar?'EN':'ع'}</span></button>`;
+ if(tb && c.id!=='app.login'){ const sp=tb.querySelector('.sp,.sp0'); const lang=`<button type="button" class="ib" data-act="lang" aria-label="${c.ar?'EN — Switch to English':'ع — التبديل إلى العربية'}"><span class="lvl" aria-hidden="true">${c.ar?'EN':'ع'}</span></button>`;
   if(root){ const me=tb.querySelector(`a[href*="#/more"]`); if(me){ me.setAttribute('href',href('app.me')); me.setAttribute('aria-label',t('Account, switch role, demo controls','الحساب وتبديل الدور وأدوات العرض')); } else if(c.role!=='guest') sp&&sp.insertAdjacentHTML('afterend',`<a class="ib" href="${href('app.me')}" aria-label="${t('Account, switch role, demo controls','الحساب وتبديل الدور وأدوات العرض')}">${I('user')}</a>`); sp&&sp.insertAdjacentHTML('afterend',lang); }
   const bk=document.querySelector('header.tb a.ib[href^="#/"]:first-child, header.tb .tbr > a.ib:first-child'); if(bk && !root) bk.setAttribute('data-back','1');
  }
