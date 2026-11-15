@@ -1,0 +1,67 @@
+/* ===== MENAFoods Rewards & Earn — module styles (loaded after app.css, v2.css, hub.css). SAMPLE DATA ONLY.
+   Reuses Direction A tokens. New: sponsored label, wallet trio, funnel, QR, leaderboard, plan table, risk chips, maker-checker. All text ≥ 4.5:1. ===== */
+:root{--spons-fg:#5A3A00;--spons-bg:#FFF1CC;--spons-line:#8A5A00;--brand-fg:#4A2370;--brand-bg:#F3ECFA;--risk-hi:#B3261E;--risk-md:#8F4C08;--risk-lo:#1E7A46}
+.spons{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--spons-line);background:var(--spons-bg);color:var(--spons-fg);border-radius:4px;padding:1px 6px;font-size:11.5px;font-weight:700;white-space:nowrap;line-height:1.5}
+.spons button,.whybtn{background:none;border:0;padding:0 2px;color:inherit;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;min-height:24px;min-width:24px}
+.fund{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:1px 6px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.fund.mf{background:var(--acc-weak);color:var(--acc-strong)}.fund.brand{background:var(--brand-bg);color:var(--brand-fg)}
+.sp-card{border:1px solid var(--spons-line);border-radius:var(--r-lg);background:var(--surface);padding:12px 14px;position:relative}
+.sp-card .photo{height:72px;margin:8px 0}
+.sp-hero{display:grid;grid-template-columns:minmax(0,1fr) 88px;gap:10px;align-items:center}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.trio .t3{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface);min-width:0}
+.trio .t3 .eyebrow{font-size:11px}
+.trio .t3 b{display:block;font-size:15px;margin-top:2px;overflow-wrap:anywhere}
+@container (max-width:340px){.trio{grid-template-columns:1fr}}
+.content{container-type:inline-size}
+.funnel{display:grid;gap:6px}
+.funnel .fr{display:grid;grid-template-columns:minmax(0,9rem) minmax(0,1fr) 3rem;gap:8px;align-items:center;font-size:12.5px}
+.funnel .fb{height:14px;border-radius:4px;background:var(--n100);overflow:hidden;border:1px solid var(--line-2)}
+.funnel .fb i{display:block;height:100%;background:var(--acc)}
+.funnel .fr .n{text-align:end;font-variant-numeric:tabular-nums;font-weight:600}
+@container (max-width:340px){.funnel .fr{grid-template-columns:minmax(0,1fr) 2.5rem}.funnel .fb{grid-column:1/-1;grid-row:2}}
+.stagechips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.stg{font-size:11px;border-radius:4px;padding:1px 6px;background:var(--n100);color:var(--ink-2);white-space:nowrap}
+.stg.done{background:var(--acc-weak);color:var(--acc-strong)}.stg.cur{background:var(--ink);color:#fff}.stg.bad{background:var(--bad-bg);color:var(--bad)}
+.qrwrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.qr{width:132px;height:132px;flex:none;background:#fff;border:1px solid var(--line-2);border-radius:8px;padding:6px}
+.qr svg{width:100%;height:100%;display:block}
+.linkbox{display:flex;gap:6px;align-items:center;border:1px solid var(--line-2);border-radius:8px;padding:6px 8px;background:var(--n25);min-width:0}
+.linkbox bdi{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.lb{counter-reset:none}
+.lb .li .rank{width:28px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+.lb .li.me{background:var(--acc-weak)}
+.cmp{width:100%;border-collapse:collapse;font-size:13px}
+.cmp th,.cmp td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}
+.cmp td.c{text-align:center}
+.cmp thead th{font-size:12.5px}
+.cmp .yes{color:var(--ok);font-weight:700}.cmp .no{color:var(--ink-3)}
+.plancards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.plancard{border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.plancard.rec{border:2px solid var(--acc)}
+.plancard ul{margin:0;padding-inline-start:18px;font-size:13px}
+.risk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.risk.hi{background:var(--bad-bg);color:var(--risk-hi)}.risk.md{background:var(--warn-bg);color:var(--risk-md)}.risk.lo{background:var(--ok-bg);color:var(--risk-lo)}
+.mc{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mc .who{border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12.5px;background:var(--surface)}
+.mc .who.done{border-color:var(--ok)}
+.graph svg{width:100%;height:auto;display:block}
+.rulegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.var{font-family:var(--font-mono);font-size:.9em;background:var(--n100);border-radius:4px;padding:0 4px;white-space:nowrap}
+.kpis4{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.toggle-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+.toggle-row:first-child{border-top:0}
+.preview-ph{border:1px dashed var(--line-ctl);border-radius:12px;padding:10px;background:var(--n25)}
+.legal{border-inline-start:3px solid var(--info);background:var(--info-bg);color:#1B3970;border-radius:8px;padding:8px 10px;font-size:12.5px;margin:8px 0}
+.legal b{display:block}
+.timeline{list-style:none;margin:0;padding:0}
+.timeline li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;padding:6px 0;font-size:13px}
+.timeline li i{width:12px;height:12px;border-radius:50%;background:var(--n300);margin-top:4px}
+.timeline li.done i{background:var(--acc)}.timeline li.bad i{background:var(--bad)}.timeline li.cur i{background:var(--ink);outline:3px solid var(--acc-weak)}
+.wrapchips{display:flex;flex-wrap:wrap;gap:6px}
+.dl2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;font-size:13px}
+.dl2 dt{color:var(--ink-2)}.dl2 dd{margin:0;text-align:end;font-weight:600}
+.dl2 .tot{border-top:1px solid var(--line);padding-top:6px;font-weight:700;color:var(--ink)}
+.grid.g2r{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.kpis4{grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
+.funnel .fr{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 3rem}

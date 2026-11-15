@@ -1,0 +1,26 @@
+{
+ "note": "SAMPLE ONLY - not a valid ZATCA invoice; Phase-2 tags 6-9 (hash, signature, public key, stamp) omitted",
+ "tlv_base64": "ARpNRU5BRm9vZHMgVHJhZGluZyAoU0FNUExFKQIPMzk5OTk5OTk5OTAwMDAzAxkyMDI2LTExLTEyVDEwOjIwOjE0KzAzOjAwBAY4NDEuMjMFBjEwOS43Mw==",
+ "fields": [
+  [
+   1,
+   "MENAFoods Trading (SAMPLE)"
+  ],
+  [
+   2,
+   "399999999900003"
+  ],
+  [
+   3,
+   "2026-11-12T10:20:14+03:00"
+  ],
+  [
+   4,
+   "841.23"
+  ],
+  [
+   5,
+   "109.73"
+  ]
+ ]
+}

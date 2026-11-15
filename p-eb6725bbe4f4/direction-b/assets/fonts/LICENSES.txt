@@ -1,0 +1,6 @@
+Bundled fonts (all SIL Open Font License 1.1, copied from the box's local Google Fonts set):
+- Alexandria (display, Arabic + Latin)
+- Noto Sans Arabic (Arabic body)
+- Inter (Latin body)
+- riyal-sign.ttf: single-glyph subset (U+20C1 SAUDI RIYAL SIGN) of Noto Naskh Arabic; assets/riyal.svg is the same outline.
+Prototype only. Replace riyal.svg with SAMA's official SVG before production.

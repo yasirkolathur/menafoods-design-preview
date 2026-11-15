@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0A6B4F">
+<title>MENAFoods · Design preview</title>
+<style>
+@font-face{font-family:Readex;src:url(redesign-v3/assets/fonts/ReadexPro-Var.ttf) format("truetype");font-weight:200 700;font-display:swap}
+@font-face{font-family:PlexAr;src:url(redesign-v3/assets/fonts/IBMPlexSansArabic-Regular.ttf);font-weight:400;font-display:swap}
+@font-face{font-family:PlexAr;src:url(redesign-v3/assets/fonts/IBMPlexSansArabic-SemiBold.ttf);font-weight:600;font-display:swap}
+@font-face{font-family:PlexAr;src:url(redesign-v3/assets/fonts/IBMPlexSansArabic-Bold.ttf);font-weight:700;font-display:swap}
+@font-face{font-family:InterV;src:url(redesign-v3/assets/fonts/Inter-Var.ttf) format("truetype");font-weight:100 900;font-display:swap}
+:root{--bg:#F6F5F1;--card:#fff;--ink:#16201B;--mut:#5A665F;--line:#E4E2DA;--brand:#0A6B4F;--brand2:#E6F2EC;--saf:#B9741A;--safbg:#FBF0DF;--warn:#7A4B00;--warnbg:#FFF4D6;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#0C100E;--card:#151B18;--ink:#EEF2EF;--mut:#A3B0A8;--line:#26302B;--brand:#3DBE8C;--brand2:#14291F;--saf:#F0B35A;--safbg:#2A2010;--warn:#F5D58A;--warnbg:#2A2410}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:InterV,PlexAr,system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+[dir=rtl] body{font-family:PlexAr,InterV,system-ui,sans-serif}
+.num{font-family:InterV,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.banner{background:var(--warnbg);color:var(--warn);text-align:center;font-size:13px;font-weight:600;padding:8px 16px}
+header{max-width:1180px;margin:0 auto;padding:28px 20px 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:var(--brand);display:grid;place-items:center;color:#fff;font-family:Readex;font-weight:700;font-size:20px;flex:none}
+h1{font-family:Readex,PlexAr,sans-serif;font-weight:600;font-size:clamp(24px,4vw,34px);line-height:1.2;margin:0}
+.sub{color:var(--mut);margin:6px 0 0;font-size:15px;max-width:640px}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card);flex:none}
+.lang button{all:unset;cursor:pointer;min-height:44px;min-width:52px;padding:0 14px;display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--mut)}
+.lang button[aria-pressed=true]{background:var(--brand);color:#fff}
+.lang button:focus-visible,.card:focus-visible,.chip:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+main{max-width:1180px;margin:0 auto;padding:12px 20px 48px}
+.section{font-family:Readex,PlexAr,sans-serif;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:28px 0 12px;font-weight:600}
+[dir=rtl] .section{letter-spacing:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{position:relative;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;text-decoration:none;color:inherit;transition:transform .16s,box-shadow .16s,border-color .16s}
+.card:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.08);border-color:var(--brand)}
+.card.rec{border:2px solid var(--brand)}
+.thumb{aspect-ratio:4/3;background:var(--brand2);overflow:hidden;display:flex;justify-content:center}
+.thumb img{width:72%;height:auto;object-fit:cover;object-position:top;margin-top:16px;border-radius:14px 14px 0 0;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+.body{padding:16px 16px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2{font-family:Readex,PlexAr,sans-serif;font-size:18px;font-weight:600;margin:0;line-height:1.3}
+.desc{color:var(--mut);font-size:14px;margin:0}
+.meta{margin-top:auto;padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--mut)}
+.open{color:var(--brand);font-weight:600}
+.badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--brand);color:#fff}
+.badge.saf{background:var(--safbg);color:var(--saf)}
+.badge.mut{background:transparent;color:var(--mut);border:1px solid var(--line)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.chip{position:relative;z-index:2;font-size:13px;font-weight:600;color:var(--brand);border:1px solid var(--line);border-radius:999px;padding:0 12px;min-height:36px;display:inline-flex;align-items:center;text-decoration:none;background:var(--card)}
+.stretch::after{content:"";position:absolute;inset:0}
+footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--mut);font-size:13px}
+@media (max-width:560px){header{flex-direction:column}.lang{align-self:stretch}.lang button{flex:1}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+<div class="banner" data-t="banner"></div>
+<header>
+  <div>
+    <div class="brand"><div class="logo">M</div><h1 data-t="title"></h1></div>
+    <p class="sub" data-t="sub"></p>
+  </div>
+  <div class="lang" role="group" aria-label="Language / اللغة">
+    <button type="button" data-l="ar" lang="ar">العربية</button>
+    <button type="button" data-l="en" lang="en">English</button>
+  </div>
+</header>
+<main>
+  <div class="section" data-t="latest"></div>
+  <div class="grid" id="g1"></div>
+  <div class="section" data-t="phases"></div>
+  <div class="grid" id="g2"></div>
+  <div class="section" data-t="earlier"></div>
+  <div class="grid" id="g3"></div>
+</main>
+<footer data-t="foot"></footer>
+<script>
+const T={
+ banner:["Design preview · sample data only · not the live MENAFoods app","معاينة تصميم · بيانات تجريبية فقط · ليس تطبيق مينا فودز الفعلي"],
+ title:["MENAFoods design themes","ثيمات تصميم مينا فودز"],
+ sub:["Pick a theme to open its clickable prototype. Inside each one you can switch role, language, light or dark, phone or tablet, and PWA, Android or iOS.","اختر ثيمًا لفتح النموذج التفاعلي. داخل كل ثيم يمكنك تغيير الدور واللغة والوضع الفاتح أو الداكن والجوال أو الجهاز اللوحي وPWA أو أندرويد أو iOS."],
+ latest:["Approved direction","الاتجاه المعتمد"],
+ phases:["Phase prototypes","نماذج المراحل"],
+ earlier:["Earlier directions","الاتجاهات السابقة"],
+ screens:["screens","شاشة"], open:["Open →","← افتح"],
+ rec:["Recommended","موصى به"], approved:["Approved","معتمد"], older:["Superseded","سابق"], p1:["Phase 1","المرحلة 1"], p2:["Phase 2","المرحلة 2"],
+ foot:["For review only. All businesses, prices, stock and amounts are fictional. No live systems are connected.","للمراجعة فقط. جميع الأنشطة والأسعار والمخزون والمبالغ وهمية. لا يوجد اتصال بأي نظام فعلي."]
+};
+const THEMES=[
+ {g:1,id:"redesign-v3",href:"redesign-v3/index.html",n:175,badges:["rec","approved"],rec:1,
+  name:["Calm Commerce · v3 (full app)","التجارة الهادئة · الإصدار 3 (التطبيق كاملًا)"],
+  d:["The approved redesign of the whole app: ordering, credit, rewards, Business Hub and every staff role.","إعادة التصميم المعتمدة للتطبيق كاملًا: الطلب والائتمان والمكافآت ومركز الأعمال وكل أدوار الموظفين."],
+  chips:[["redesign-v3/app.html",["App only, full screen","التطبيق فقط بملء الشاشة"]]]},
+ {g:1,id:"v3-concepts",href:"redesign-v3/concepts/index.html#s=home",n:3,badges:["older"],
+  name:["Calm Commerce · first concept","التجارة الهادئة · المفهوم الأول"],
+  d:["The first Calm Commerce sketch: home, cart and customer 360.","المسودة الأولى للتجارة الهادئة: الرئيسية والسلة وعرض العميل 360."],
+  chips:[["redesign-v3/concepts/index.html#s=cart",["Cart","السلة"]],["redesign-v3/concepts/index.html#s=c360",["Customer 360","عرض العميل 360"]]]},
+ {g:2,id:"rewards-earn",href:"rewards-earn/index.html",n:43,badges:["p1"],
+  name:["Rewards & Earn","المكافآت والربح"],
+  d:["Loyalty points, rewards, referrals and affiliate earning, plus sponsored brand deals.","نقاط الولاء والمكافآت والإحالات وأرباح الشركاء وعروض العلامات الممولة."]},
+ {g:2,id:"business-hub",href:"business-hub/index.html",n:33,badges:["p2"],
+  name:["Business Hub · mini ERP","مركز الأعمال · نظام ERP مصغر"],
+  d:["Purchases, daily sales, expenses, cash day book, payments and team, connected to Zoho Books.","المشتريات والمبيعات اليومية والمصروفات ودفتر الصندوق والمدفوعات والفريق، مرتبط بـ Zoho Books."]},
+ {g:3,id:"direction-a-v2",href:"direction-a-v2/index.html",n:92,badges:["older"],
+  name:["Direction A v2 · Reorder-first","الاتجاه A الإصدار 2 · إعادة الطلب أولًا"],
+  d:["Reorder-first app with smart basket, credit, cash book and growth hub.","تطبيق يبدأ بإعادة الطلب مع سلة ذكية وائتمان ودفتر صندوق ومركز نمو."]},
+ {g:3,id:"direction-a",href:"direction-a/index.html",n:55,badges:["older"],
+  name:["Direction A · Quiet Pro","الاتجاه A · احترافي هادئ"],
+  d:["The first reorder-first concept for buyers, sales and operations.","أول مفهوم لإعادة الطلب أولًا للمشترين والمبيعات والعمليات."]},
+ {g:3,id:"direction-b",href:"direction-b/index.html",n:59,badges:["older"],
+  name:["Direction B · Smart Basket","الاتجاه B · السلة الذكية"],
+  d:["A guided assistant that builds the basket and walks through credit.","مساعد موجّه يجهّز السلة ويرشد خطوات الائتمان."]},
+ {g:3,id:"direction-c",href:"direction-c/index.html",n:60,badges:["older"],
+  name:["Direction C · Role Command Hubs","الاتجاه C · لوحات قيادة حسب الدور"],
+  d:["A command hub for each role: buyer, sales, van, driver, store and accounts.","لوحة قيادة لكل دور: المشتري والمبيعات والمندوب والسائق والمستودع والحسابات."]}
+];
+let L=(()=>{try{const s=localStorage.getItem('mfp.lang');if(s)return s}catch(e){}return (navigator.language||'en').toLowerCase().startsWith('ar')?'ar':'en'})();
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function withLang(h){ // pass chosen language to prototypes
+  if(h.includes('concepts/')) return h+(h.includes('#')?'&':'#')+'l='+L;
+  if(h.startsWith('redesign-v3/')||h==='app.html') return h+'#/b.home?lang='+L;
+  return h;}
+function render(){
+  const i=L==='ar'?1:0; document.documentElement.lang=L; document.documentElement.dir=L==='ar'?'rtl':'ltr';
+  document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T[e.dataset.t][i]);
+  document.querySelectorAll('.lang button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.l===L));
+  document.title=T.title[i]+' · '+(i?'معاينة':'Preview');
+  [1,2,3].forEach(g=>{document.getElementById('g'+g).innerHTML=THEMES.filter(t=>t.g===g).map(t=>`
+   <article class="card${t.rec?' rec':''}">
+    <div class="thumb"><img src="thumbs/${t.id}${i?"":"-en"}.webp" alt="" loading="lazy" width="480" height="600"></div>
+    <div class="body">
+     <div class="top">${t.badges.map(b=>`<span class="badge ${b==='rec'?'':b==='approved'||b.startsWith('p')?'saf':'mut'}">${T[b][i]}</span>`).join('')}</div>
+     <h2><a class="stretch" href="${withLang(t.href)}" style="color:inherit;text-decoration:none">${esc(t.name[i])}</a></h2>
+     <p class="desc">${esc(t.d[i])}</p>
+     ${t.chips?`<div class="chips">${t.chips.map(c=>`<a class="chip" href="${withLang(c[0])}">${esc(c[1][i])}</a>`).join('')}</div>`:''}
+     <div class="meta"><span><span class="num">${t.n}</span> ${T.screens[i]}</span><span class="open">${T.open[i]}</span></div>
+    </div></article>`).join('')});
+}
+document.querySelector('.lang').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;L=b.dataset.l;try{localStorage.setItem('mfp.lang',L)}catch(e){}render()});
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MENAFoods · Rewards &amp; Earn — Phase 1 (prototype, sample data)</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/v2.css">
+<link rel="stylesheet" href="assets/hub.css">
+<link rel="stylesheet" href="assets/re.css">
+</head>
+<body>
+<div class="studio">
+  <div class="sbar"><span class="brand">MENAFoods · Rewards &amp; Earn <small>Phase 1 — clickable prototype (Direction A look)</small></span><span id="ctl" style="display:contents"></span><span class="sample">Sample data · بيانات تجريبية</span></div>
+  <nav class="snav" id="snav"></nav>
+  <main class="stage"><div id="stagewrap"><div id="device" class="device mobile"></div></div><aside class="notes" id="notes"></aside></main>
+</div>
+<script src="assets/core.js"></script>
+<script src="assets/a11y.js"></script>
+<script src="assets/re-base.js"></script>
+<script src="assets/re-customer.js"></script>
+<script src="assets/re-earn.js"></script>
+<script src="assets/re-admin.js"></script>
+<script>(function(){const R=["re","rs","rd","rx","rm","rc"];const ix=new Map(MF.order.map((id,i)=>[id,i]));MF.order.sort((a,b)=>(R.indexOf(MF.screens[a].role)-R.indexOf(MF.screens[b].role))||(ix.get(a)-ix.get(b)));})();MF.boot();</script>
+</body>
+</html>
