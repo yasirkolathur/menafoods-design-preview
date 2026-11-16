@@ -93,7 +93,13 @@ function loadDocs(c){
   const S=L.S(); S.invoices=[]; S.payments=[]; S.cns=[]; L.ui.scd={invoices:'loading',payments:'loading',cns:'loading'}; if(L.store&&L.store.replace) L.store.replace(S);
   const N=L.norm||{}, qs='?'+encodeURIComponent(P.customerParam||'customer_id')+'='+encodeURIComponent(c.id), my=c.id;
   L.ui.scmeta={};
-  const meta=j=>{ if(!j||typeof j!=='object'||Array.isArray(j)) return; const src=Object.assign({},j.meta||{},j); if(src.books_contact_status) L.ui.scmeta.status=String(src.books_contact_status).toLowerCase(); if(src.books_customer_number) L.ui.scmeta.no=String(src.books_customer_number); };
+  /* Books number / status may sit at the top level, in meta, in data (object), or in a customer / contact object of the response */
+  const meta=j=>{ const O=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:null; j=O(j); if(!j) return; const d=O(j.data), m=O(j.meta), sv=v=>v==null?'':String(v).trim();
+    const plain=[j,m,d,O(j.customer),O(d&&d.customer),O(m&&m.customer)].filter(Boolean);                     /* MENAFoods objects: only the books_* fields */
+    const books=[O(j.contact),O(d&&d.contact),O(j.books_contact),O(d&&d.books_contact),O(m&&m.books_contact),O(j.books),O(d&&d.books)].filter(Boolean);   /* Books contact objects */
+    const no=plain.map(o=>sv(o.books_customer_number||o.booksCustomerNumber)).concat(books.map(o=>sv(o.books_customer_number||o.contact_number||o.customer_number))).find(Boolean);
+    const st=plain.map(o=>sv(o.books_contact_status||o.booksContactStatus)).concat(books.map(o=>sv(o.books_contact_status||o.contact_status||o.status))).find(Boolean);
+    if(st&&!L.ui.scmeta.status) L.ui.scmeta.status=st.toLowerCase(); if(no&&!L.ui.scmeta.no) L.ui.scmeta.no=no; };
   const get=(path,key,fn)=>API.request('GET',path+qs,undefined,{quiet:true}).then(j=>{ if(!L.ui.sc||L.ui.sc.id!==my) return; meta(j); const a=listOf(j); const S2=L.S(); S2[key]=a&&fn?a.map(fn).filter(x=>x&&(x.no||x.id)):[];
       L.ui.scd[key]=S2[key].length?'ok':reasonSt(j&&!Array.isArray(j)?(j.reason||(j.meta&&j.meta.reason)):null)||'ok'; if(L.store&&L.store.replace) L.store.replace(S2); },
     e=>{ if(!L.ui.sc||L.ui.sc.id!==my) return; const b=e&&e.body; meta(b); meta(b&&b.error&&b.error.details); const rc=b&&((b.error&&(b.error.reason||b.error.code))||b.reason); L.ui.scd[key]=reasonSt(rc,true)||errSt(e); });
@@ -134,12 +140,13 @@ DOCS.forEach(id=>{ const d=MF.SCR[id]; if(!d) return; if(Array.isArray(d.r)) STA
 
 /* read-only: on the customer's documents the accountant gets no write actions, and a Read-only tag */
 const canOpen=id=>{ const d=MF.SCR[id], r=role(); return !!(d&&Array.isArray(d.r)&&d.r.includes(r)&&!d.__lvBlocked); };
+const sameNo=(a,b)=>String(a||'').trim().toUpperCase()===String(b||'').trim().toUpperCase();   /* the Books no. is hidden when it repeats the customer no. */
 const roHook=c=>{ if(!c||!isStaff()||!DOCS.includes(c.id)||!L.ui.sc) return;
   document.querySelectorAll('body a[href^="#/"]').forEach(a=>{ if(a.closest('nav.nb,header,.lv-ro,.top,.appbar')) return; const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; if(id&&!canOpen(id)) a.remove(); });
   document.querySelectorAll('body [data-act]').forEach(b=>{ if(b.closest('nav.nb,header,.lv-ro,.top,.appbar')) return; if(!SAFE.has(b.dataset.act)) b.remove(); });
   document.querySelectorAll('#main .btns,#main .grp').forEach(x=>{ if(!x.children.length) x.remove(); });
   const m=document.querySelector('#main'); if(m&&!m.querySelector('.lv-ro')){ const sc=L.ui.sc, mt=L.ui.scmeta||{};
-    m.insertAdjacentHTML('afterbegin',`<div class="lv-ro card pad" role="note"><span class="avs" aria-hidden="true">${esc(ini(cname(sc)))}</span><span class="b"><b>${esc(cname(sc))}</b>${sc.no?`<span class="s">${t('Customer no.','رقم العميل')} ${LTR(esc(sc.no))}</span>`:''}${mt.no&&mt.no!==sc.no?`<span class="s">${t('Zoho Books no.','رقم Zoho Books')} ${LTR(esc(mt.no))}</span>`:''}${mt.status==='inactive'?`<span class="s lv-inact">${H.pill('warn',t('Inactive in Books','غير نشط في Zoho Books'))}</span>`:''}</span>${H.pill('neu',t('Read-only','للقراءة فقط'))}<a class="lv-ro-ch" href="${MF.href('st.customers',{k:null,id:null,no:null,back:null})}">${t('Change','تغيير')}</a></div>`); } };
+    m.insertAdjacentHTML('afterbegin',`<div class="lv-ro card pad" role="note"><span class="avs" aria-hidden="true">${esc(ini(cname(sc)))}</span><span class="b"><b>${esc(cname(sc))}</b>${sc.no?`<span class="s">${t('Customer no.','رقم العميل')} ${LTR(esc(sc.no))}</span>`:''}${mt.no&&!sameNo(mt.no,sc.no)?`<span class="s">${t('Zoho Books no.','رقم Zoho Books')} ${LTR(esc(mt.no))}</span>`:''}${mt.status==='inactive'?`<span class="s lv-inact">${H.pill('warn',t('Inactive in Books','غير نشط في Zoho Books'))}</span>`:''}</span>${H.pill('neu',t('Read-only','للقراءة فقط'))}<a class="lv-ro-ch" href="${MF.href('st.customers',{k:null,id:null,no:null,back:null})}">${t('Change','تغيير')}</a></div>`); } };
 if(Array.isArray(L.post)) L.post.unshift(roHook);
 (()=>{ const st=document.createElement('style'); st.textContent='.lv-ro{display:flex;align-items:center;gap:10px;margin:0 16px 12px}.lv-ro .b{flex:1;min-width:0;display:flex;flex-direction:column}.lv-ro .s{font-size:12.5px;color:var(--c-text-2)}.lv-inact{margin-top:4px}.lv-ro-ch{font-weight:600;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center;padding:0 4px}'; document.head.appendChild(st); })();
 
