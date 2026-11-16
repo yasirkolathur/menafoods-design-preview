@@ -12,11 +12,23 @@
    See /research/zoho-live-data-map.md (workspace) for each endpoint's Zoho app, module and shape. */
 (function(){
 'use strict';
-const C=Object.assign({mode:'sample',baseUrl:'',prefix:'/server/mf_zoho_gateway/v1',erpPrefix:'/server/mf_erp_connector/v1',timeoutMs:15000},window.MF_API_CONFIG||{});
-/* a URL may force sample mode (for demos), never live */
-try{ if(new URLSearchParams(location.search).get('api')==='sample') C.mode='sample'; }catch(e){}
-if(C.mode!=='live') C.mode='sample';
-const LIVE=C.mode==='live';
+const C=Object.assign({mode:'auto',baseUrl:'',prefix:'/server/mf_zoho_gateway/v1',erpPrefix:'/server/mf_erp_connector/v1',timeoutMs:15000},window.MF_API_CONFIG||{});
+/* Live mode turns on ONLY when
+   (a) the page itself is served by the Catalyst preview host (same origin as the gateway), or
+   (b) the URL asks for ?mode=live — then the gateway is called on a RELATIVE path of the current origin.
+   No Catalyst URL is ever hard-coded, so the public GitHub Pages site can never call it. ?api=sample always wins. */
+const QS=(()=>{ try{ return new URLSearchParams(location.search); }catch(e){ return new URLSearchParams(); } })();
+const onCatalyst=/\.catalystserverless\.(com|in|eu)$/i.test(location.hostname||'') && /^\/(server|app)\//.test(location.pathname||'');
+let mode=C.mode;
+if(mode!=='sample'&&mode!=='live') mode=(onCatalyst||QS.get('mode')==='live')?'live':'sample';
+if(QS.get('api')==='sample') mode='sample';
+C.mode=mode; C.baseUrl='';                 /* always same-origin / relative */
+const LIVE=mode==='live';
+const LIVE_STORES={shop:true};             /* seller apps (mkt) stay on sample data for now */
+const isLive=name=>LIVE&&!!LIVE_STORES[name];
+const T=(en,ar)=>((document.documentElement.lang||'').slice(0,2)==='ar'||/[?&]lang=ar/.test(location.hash))?ar:en;
+const NOT_IN_PREVIEW=['Not available in the preview yet','غير متاح في المعاينة بعد'];
+const isNotEnabled=(status,body)=>{ const e=body&&body.error; const code=typeof e==='string'?e:(e&&e.code); return code==='not_enabled_in_preview'||(status===501&&!!e); };
 
 /* ---------- local persistence (sample data, or the live offline cache) ---------- */
 const ls={
@@ -24,7 +36,7 @@ const ls={
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } },
   del(k){ try{ localStorage.removeItem(k); }catch(e){} }
 };
-const ck=k=>LIVE?'mfapi-live:'+k:k;      /* live cache never mixes with sample data */
+const ck=(k,name)=>isLive(name)?'mfapi-live:'+k:k;      /* live cache never mixes with sample data */
 
 /* ---------- entity registry: which state paths are real business data, and their endpoints ---------- */
 /* kind 'list' = array keyed by `key` (create/update per item); 'doc' = whole object (PUT); ro = read only */
@@ -88,8 +100,8 @@ function request(method,path,body,opt){
   if(body!==undefined) h['Content-Type']='application/json';
   if(method!=='GET') h['Idempotency-Key']=opt.idem||uid();
   if(session) h['Authorization']='Bearer '+session;   /* short-lived session token from /auth/otp/verify, memory only */
-  return fetch(url,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),credentials:'include',signal:ctl&&ctl.signal})
-   .then(r=>r.status===204?null:r.json().then(j=>{ if(!r.ok){ const e=new Error((j&&j.error&&j.error.message)||('HTTP '+r.status)); e.status=r.status; e.body=j; throw e; } return j; }))
+  return fetch(url,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),credentials:'include',cache:'no-store',signal:ctl&&ctl.signal})
+   .then(r=>r.status===204?null:r.json().catch(()=>null).then(j=>{ if(!r.ok){ const er=j&&j.error; const e=new Error((er&&er.message)||(typeof er==='string'?er:'')||('HTTP '+r.status)); e.status=r.status; e.body=j; e.code=typeof er==='string'?er:(er&&er.code)||''; e.message_ar=er&&er.message_ar; e.notEnabled=isNotEnabled(r.status,j); if(e.notEnabled) notice(path,e); throw e; } return j; }))
    .finally(()=>tm&&clearTimeout(tm));
 }
 
@@ -102,9 +114,9 @@ function flush(){
   const a=outbox.all(); if(!a.length) return Promise.resolve();
   flushing=true; const op=a[0];
   return request(op.m,op.path,op.body,{idem:op.idem,erp:op.erp}).then(()=>{ outbox.set(outbox.all().slice(1)); flushing=false; return flush(); },
-    e=>{ flushing=false; if(e.status&&e.status>=400&&e.status<500&&e.status!==401&&e.status!==429){ outbox.set(outbox.all().slice(1)); emit('rejected',{op,error:e.body||String(e)}); return flush(); } });
+    e=>{ flushing=false; if(e.notEnabled||(e.status&&e.status>=400&&e.status<500&&e.status!==401&&e.status!==429)){ outbox.set(outbox.all().slice(1)); emit('rejected',{op,error:e.body||String(e)}); return flush(); } });
 }
-if(LIVE){ addEventListener('online',flush); setInterval(flush,30000); }
+if(LIVE){ addEventListener('online',flush); setInterval(flush,30000); setTimeout(flush,1500); }
 
 /* ---------- per-entity diff -> operations ---------- */
 function diff(store,prev,next){
@@ -120,6 +132,21 @@ function diff(store,prev,next){
   return ops.map(o=>Object.assign(o,{idem:uid(),ts:Date.now()}));
 }
 
+/* ---------- 'not enabled in the preview' (HTTP 501): final, never retried, shown inline ---------- */
+function notice(path,e){
+  emit('rejected',{path,code:'not_enabled_in_preview',status:e&&e.status});
+  try{
+    let n=document.getElementById('mfapi-notice');
+    if(!n){ n=document.createElement('div'); n.id='mfapi-notice'; n.setAttribute('role','status'); n.setAttribute('aria-live','polite');
+      n.style.cssText='position:fixed;inset-inline:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:9999;background:#1f2937;color:#fff;border-radius:12px;padding:12px 44px 12px 14px;font:500 14px/1.4 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:560px;margin-inline:auto';
+      document.body.appendChild(n); }
+    n.innerHTML='<strong></strong><span style="display:block;opacity:.85;font-weight:400"></span><button type="button" aria-label="'+T('Dismiss','إغلاق')+'" style="position:absolute;inset-inline-end:6px;top:6px;background:none;border:0;color:#fff;font-size:20px;width:36px;height:36px;cursor:pointer">×</button>';
+    n.querySelector('strong').textContent=T(NOT_IN_PREVIEW[0],NOT_IN_PREVIEW[1]);
+    n.querySelector('span').textContent=T('Nothing was changed. This action will work once it is switched on.','لم يتغير شيء. سيعمل هذا الإجراء عند تفعيله.');
+    n.querySelector('button').onclick=()=>n.remove();
+    clearTimeout(notice.t); notice.t=setTimeout(()=>{ n&&n.remove(); },8000);
+  }catch(x){}
+}
 /* ---------- events ---------- */
 const subs={};
 const on=(ev,fn)=>{ (subs[ev]=subs[ev]||[]).push(fn); };
@@ -128,32 +155,33 @@ const emit=(ev,x)=>{ (subs[ev]||[]).forEach(f=>{ try{ f(x); }catch(e){ console.w
 /* ---------- stores ---------- */
 const synced={};   /* last state acknowledged by the server, per store */
 function store(name,key){
-  const k=ck(key);
+  const k=ck(key,name);
   return {
     name, key,
-    read(){ const v=ls.get(k); if(LIVE&&v&&!synced[name]) synced[name]=JSON.parse(J(v)); return v; },
+    read(){ const v=ls.get(k); if(isLive(name)&&v&&!synced[name]) synced[name]=JSON.parse(J(v)); return v; },
     write(state){
       ls.set(k,state);
-      if(LIVE){ const prev=synced[name]; if(prev){ diff(name,prev,state).forEach(op=>outbox.push(op)); flush(); } synced[name]=JSON.parse(J(state)); }
+      if(isLive(name)){ const prev=synced[name]; if(prev){ diff(name,prev,state).forEach(op=>outbox.push(op)); flush(); } synced[name]=JSON.parse(J(state)); }
       return state;
     },
     clear(){ ls.del(k); },
     /* live: fetch the server snapshot (same shape as the sample state) and hand it to the app */
     boot(apply){
-      if(!LIVE) return Promise.resolve(null);
+      if(!isLive(name)) return Promise.resolve(null);
       return request('GET','/bootstrap/'+name).then(j=>{ const st=j&&j.data; if(st){ synced[name]=JSON.parse(J(st)); ls.set(k,st); apply&&apply(st); emit('boot',{store:name}); } return st; },
-        e=>{ emit('offline',{store:name,error:String(e)}); return null; });
+        e=>{ emit(e.status===401?'auth':'offline',{store:name,error:String(e),status:e.status}); return null; });
     }
   };
 }
 /* live mode: empty the business data in a freshly seeded state so no sample record is ever shown as real */
 function strip(name,state){
-  if(!LIVE||!state) return state;
+  if(!isLive(name)||!state) return state;
   (ENTITIES[name]||[]).forEach(e=>{ const v=getP(state,e.p); if(Array.isArray(v)) setP(state,e.p,[]); else if(typeof v==='number') setP(state,e.p,0); else if(v&&typeof v==='object'&&e.kind!=='doc') setP(state,e.p,{}); });
   return state;
 }
 /* UI preferences (language, theme): device-local in both modes */
 const pref={ get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 
-window.MFAPI={ setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+const get=(path)=>request('GET',path);
+window.MFAPI={ setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
 })();

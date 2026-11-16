@@ -11,14 +11,15 @@ const qp=k=>new URLSearchParams(location.hash.split('?')[1]||'').get(k);
 L.qp=qp;
 
 /* ---------------- money model ---------------- */
-const subOf=L.subOf=items=>r2(Object.entries(items).reduce((s,[k,q])=>s+(P0()[k]?P0()[k].pr*q:0),0));
-const tot=L.tot=o=>{ const sub=subOf(o.items); const disc=o.disc||0, fee=o.fee||0; const vat=r2((sub-disc+fee)*VAT); return {sub,disc,fee,vat,tot:r2(sub-disc+fee+vat),n:Object.values(o.items).reduce((a,b)=>a+b,0)}; };
+/* a line with an unknown price (live catalogue) makes the subtotal unknown: never guess */
+const subOf=L.subOf=items=>{ let s=0; for(const [k,q] of Object.entries(items)){ if(!q) continue; const p=P0()[k]; const pr=p&&p.pr; if(pr==null||!isFinite(pr)||(window.MFAPI&&MFAPI.live&&pr<=0)) return null; s+=pr*q; } return r2(s); };
+const tot=L.tot=o=>{ const sub=subOf(o.items); const n=Object.values(o.items).reduce((a,b)=>a+b,0); const disc=o.disc||0, fee=o.fee||0; if(sub==null||(window.MFAPI&&MFAPI.live&&!MFAPI.vatKnown)) return {sub,disc,fee,vat:null,tot:null,n,unknown:true}; const vat=r2((sub-disc+fee)*VAT); return {sub,disc,fee,vat,tot:r2(sub-disc+fee+vat),n:Object.values(o.items).reduce((a,b)=>a+b,0)}; };
 const ord=L.ord=id=>S().orders.find(o=>o.id===String(id));
 const invAmt=L.invAmt=i=>i.amt||(ord(i.order)?tot(ord(i.order)).tot:0);
 const bal=L.bal=i=>r2(invAmt(i)-(i.paid||0)-(i.cr||0));
 const stage=L.stage=o=>{ if(['approval','rejected','queued','pay','cancelled'].includes(o.st)) return -1; if(o.fixed!=null) return o.fixed; return Math.min(3,Math.floor((now()-o.ts)/STEP)); };
 const credit=L.credit=()=>{ const s=S(); const unpaid=s.invoices.reduce((a,i)=>a+Math.max(0,bal(i)),0); const open=s.orders.filter(o=>o.pay==='credit'&&!o.inv&&!['rejected','cancelled','queued'].includes(o.st)).reduce((a,o)=>a+tot(o).tot,0); const used=r2(unpaid+open); const od=s.invoices.filter(i=>bal(i)>0&&i.due<now()); const overdue=r2(od.reduce((a,i)=>a+bal(i),0)); const late=od.length?Math.floor((now()-Math.min(...od.map(i=>i.due)))/DAY):0; return {limit:s.credit.limit,used,avail:r2(s.credit.limit-used),overdue,late,hold:late>7,od}; };
-MF.cartTot=()=>{ const items=S().cart; const T=tot({items}); return {sub:T.sub,vat:r2(T.sub*VAT),tot:r2(T.sub*1.15),n:T.n,l:Object.keys(items).length}; };
+MF.cartTot=()=>{ const items=S().cart; const T=tot({items}); return {sub:T.sub,vat:T.vat,tot:T.tot,n:T.n,l:Object.keys(items).length,unknown:!!T.unknown}; };
 const ST=L.STAGES=()=>[t('Confirmed','مؤكد'),t('Picked & packed','تم التجهيز'),t('Out for delivery','خرج للتوصيل'),t('Delivered','تم التسليم')];
 const stPill=L.stPill=o=>{ const g=stage(o); if(o.st==='approval') return ['warn',t('Needs approval','بانتظار الموافقة')]; if(o.st==='rejected') return ['bad',t('Not approved','لم تتم الموافقة')]; if(o.st==='queued') return ['neu',t('Waiting to send','بانتظار الإرسال')]; if(o.st==='pay') return ['warn',t('Awaiting transfer','بانتظار التحويل')]; if(o.st==='cancelled') return ['neu',t('Cancelled','ملغى')]; return [g===3?'ok':'info',ST()[g]]; };
 const active=L.active=o=>!['rejected','cancelled'].includes(o.st)&&stage(o)<3;
