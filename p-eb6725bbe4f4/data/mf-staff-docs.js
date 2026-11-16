@@ -113,12 +113,14 @@ const payRow=p=>({ic:'wallet',tone:'ok',t:`${LTR(esc(p.id))} · ${M(p.amt)}`,s:`
 const cnRow=cn=>({ic:'receipt',tone:'ok',t:t('Credit note','إشعار دائن')+' '+LTR(esc(cn.no||'—')),s:`${esc(Array.isArray(cn.why)?tt(cn.why):nz(cn.why,''))}${cn.inv?' · '+t('on','على')+' '+LTR(esc(cn.inv)):''}${cn.ts?' · '+dshort(cn.ts):''}`,end:M(cn.amt==null?null:-cn.amt),go:cn.inv&&(L.S().invoices||[]).some(i=>i.no===cn.inv)?'b.invoice':null,q:cn.inv?{no:cn.inv}:null});
 const box=(rows,key,art,en,ar)=>{ const st=L.ui.scd[key]; if(rows.length) return H.rows(rows); if(st==='loading') return `<p class="note" role="status">${t('Loading…','جارٍ التحميل…')}</p>`; if(st==='na') return H.empty('lock',NA()[0],''); if(st==='denied') return H.empty('lock',DENIED()[0],''); if(st==='err') return H.empty(art,t('Couldn’t load this list','تعذّر تحميل هذه القائمة'),''); if(RS[st]) return rsHtml(st); return H.empty(art,t(en,ar),''); };
 const byTs=(k)=>(a,b)=>(b[k]||0)-(a[k]||0);
-const hub=()=>{ const s=L.S(); const sd=L.ui.scd||{}; if(LIVE&&['unmapped','nf','none','books'].includes(sd.invoices)&&sd.invoices===sd.payments&&sd.invoices===sd.cns) return rsHtml(sd.invoices);
+/* the separate lists are always one tap away, also in the empty and reason states */
+const allDocs=()=>!LIVE?'':H.sec(t('All documents','كل المستندات'),H.rows([{ic:'doc',tone:'brand',t:t('All invoices','كل الفواتير'),go:'b.invoices'},{ic:'wallet',tone:'brand',t:t('All payments','كل المدفوعات'),go:'b.payments'},{ic:'receipt',tone:'brand',t:t('All credit notes','كل الإشعارات الدائنة'),go:'b.creditnotes'}]));
+const hub=()=>{ const s=L.S(); const sd=L.ui.scd||{}; if(LIVE&&['unmapped','nf','none','books'].includes(sd.invoices)&&sd.invoices===sd.payments&&sd.invoices===sd.cns) return rsHtml(sd.invoices)+(sd.invoices==='nf'?'':allDocs());
   const inv=(s.invoices||[]).slice().sort(byTs('d')), pay=(s.payments||[]).slice().sort(byTs('ts')), cns=(s.cns||[]).slice().sort(byTs('ts'));
   return H.sec(t('Invoices','الفواتير'),box(inv.slice(0,5).map(L.invRow),'invoices','doc','No invoices yet','لا توجد فواتير بعد'),{act:inv.length?[t('All invoices','كل الفواتير'),'b.invoices']:null})
    +H.sec(t('Payments','المدفوعات'),box(pay.slice(0,5).map(payRow),'payments','wallet','No payments yet','لا توجد مدفوعات بعد'),{act:pay.length?[t('All payments','كل المدفوعات'),'b.payments']:null})
    +H.sec(t('Credit notes','الإشعارات الدائنة'),box(cns.slice(0,5).map(cnRow),'cns','receipt','No credit notes yet','لا توجد إشعارات دائنة بعد'),{act:cns.length?[t('All credit notes','كل الإشعارات الدائنة'),'b.creditnotes']:null})
-   +H.sec('',H.rows([{ic:'doc',tone:'brand',t:t('Statement of account','كشف الحساب'),go:'b.statement'}])); };
+   +allDocs()+H.sec('',H.rows([{ic:'doc',tone:'brand',t:t('Statement of account','كشف الحساب'),go:'b.statement'}])); };
 const payList=()=>H.sec('',box((L.S().payments||[]).slice().sort(byTs('ts')).map(payRow),'payments','wallet','No payments yet','لا توجد مدفوعات بعد'));
 const cnList=()=>H.sec('',box((L.S().cns||[]).slice().sort(byTs('ts')).map(cnRow),'cns','receipt','No credit notes yet','لا توجد إشعارات دائنة بعد'));
 /* sample mode has no payment / credit-note list screens: add them for the accountant only */
