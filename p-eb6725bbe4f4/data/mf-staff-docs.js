@@ -36,14 +36,24 @@ L.ui.scl=L.ui.scl||{st:'idle',list:[],q:''}; L.ui.scById=L.ui.scById||{};
 const remember=a=>a.forEach(c=>{ L.ui.scById[c.id]=c; });
 let seq=0, tmr=null;
 const paint=()=>{ const el=document.getElementById('lvsc-res'); if(el) el.innerHTML=resHtml(); };
+/* client-side match on name, Arabic name and customer number (the gateway may not match numbers); Arabic letters normalised */
+const AD={'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'};
+const norm=v=>String(v==null?'':v).replace(/[٠-٩۰-۹]/g,d=>AD[d]).normalize('NFKC').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/\s+/g,' ').trim();
+const cmp=v=>norm(v).replace(/[\s\-_./#]/g,'');
+const matches=(c,q)=>{ if(!q) return true; const n=norm(q), k=cmp(q); return norm(c.name).includes(n)||norm(c.name_ar).includes(n)||(!!k&&cmp(c.no).includes(k)); };
 function fetchCust(q,more){ q=(q||'').trim(); L.ui.scl.q=q;
   if(!LIVE){ const k=q.toLowerCase(); const a=SAMPLE.filter(c=>!k||[c.name,c.name_ar,c.no].some(v=>v&&String(v).toLowerCase().includes(k))); remember(a); L.ui.scl={st:a.length?'ok':'empty',list:a,q,next:null}; paint(); return; }
   const prev=more?L.ui.scl:null, cur=more&&prev&&prev.next; if(more&&!cur) return;
   const my=++seq; if(more){ prev.busy=true; } else L.ui.scl={st:'loading',list:[],q,next:null}; paint();
-  API.request('GET',P.staffCustomers+'?q='+encodeURIComponent(q)+(cur?'&cursor='+encodeURIComponent(cur):''),undefined,{quiet:true}).then(j=>{ if(my!==seq) return;
-      const a=(listOf(j)||[]).map(nCust).filter(c=>c&&c.id&&c.name); remember(a); const next=j&&!Array.isArray(j)&&j.next_cursor?String(j.next_cursor):null;
-      const list=more?prev.list.concat(a.filter(c=>!prev.list.some(x=>x.id===c.id))):a; L.ui.scl={st:list.length?'ok':'empty',list,q,next}; paint(); },
-    e=>{ if(my!==seq) return; if(more){ prev.busy=false; prev.moreErr=true; paint(); return; } L.ui.scl={st:errSt(e),list:[],q,next:null}; paint(); }); }
+  const page=(qq,c)=>API.request('GET',P.staffCustomers+'?q='+encodeURIComponent(qq)+(c?'&cursor='+encodeURIComponent(c):''),undefined,{quiet:true})
+    .then(j=>({rows:(listOf(j)||[]).map(nCust).filter(x=>x&&x.id&&x.name),next:j&&!Array.isArray(j)&&j.next_cursor?String(j.next_cursor):null}));
+  const qs=(prev&&prev.scan)?'':q;   /* a number search that fell back to scanning keeps scanning */
+  page(qs,cur).then(async r=>{ let rows=r.rows.filter(c=>matches(c,q)), next=r.next, scan=!!(prev&&prev.scan);
+      /* nothing matched (the gateway may not match customer numbers or Arabic spelling variants): scan the unfiltered list, a few pages, and match here */
+      if(!more&&!rows.length&&q){ scan=true; let c=null, n=0; do{ const p2=await page('',c); if(my!==seq) return; rows=rows.concat(p2.rows.filter(x=>matches(x,q))); c=p2.next; n++; }while(c&&!rows.length&&n<5); next=rows.length?null:c; }
+      if(my!==seq) return; remember(rows);
+      const list=more?prev.list.concat(rows.filter(c=>!prev.list.some(x=>x.id===c.id))):rows; L.ui.scl={st:list.length?'ok':'empty',list,q,next,scan}; paint(); })
+   .catch(e=>{ if(my!==seq) return; if(more){ prev.busy=false; prev.moreErr=true; paint(); return; } L.ui.scl={st:errSt(e),list:[],q,next:null}; paint(); }); }
 ACT.scmore=()=>fetchCust(L.ui.scl.q||'',true);
 const custRow=c=>`<button type="button" class="row" data-act="scpick" data-arg="${esc(c.id)}"><span class="avs" aria-hidden="true">${esc(ini(cname(c)))}</span><span class="b"><span class="t">${esc(cname(c))}</span>${c.no?`<span class="s">${t('Customer no.','رقم العميل')} ${LTR(esc(c.no))}</span>`:''}</span><span class="chev">${I('chev',18)}</span></button>`;
 function resHtml(){ const s=L.ui.scl;
