@@ -121,10 +121,66 @@ ACT.lvrole=r=>{ const av=(L.S().me&&L.S().me.avail)||[]; if(av.includes(r)) L.lo
 L.def('b.home',{t:()=>{ const h=new Date().getHours(); const g=h<12?t('Good morning','صباح الخير'):h<18?t('Good afternoon','مساء الخير'):t('Good evening','مساء الخير'); const n=String(meName(MF.C&&MF.C.ar)||'').split(' ')[0]; return n?g+(MF.C&&MF.C.ar?'، ':', ')+n:g; }});
 /* deny screen in core names "The owner (Faisal)" */
 /* …and some prototype copy carries a '(sample)' tag — drop it in live mode */
-const STRIP=/\s*\((Faisal|فيصل|sample|simulated|تجريبي|تجريبية|عينة|محاكاة)\)/g;
-L.stripSample=root=>{ if(!root) return; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n; while((n=w.nextNode())){ if(STRIP.test(n.nodeValue)){ STRIP.lastIndex=0; n.nodeValue=n.nodeValue.replace(STRIP,''); } STRIP.lastIndex=0; } root.querySelectorAll&&root.querySelectorAll('[aria-label]').forEach(e=>{ const a=e.getAttribute('aria-label'); if(STRIP.test(a)){ STRIP.lastIndex=0; e.setAttribute('aria-label',a.replace(STRIP,'')); } STRIP.lastIndex=0; }); };
+const STRIP=/\s*\((Faisal|فيصل|sample|sample consent|sample rule|simulated|تجريبي|تجريبية|عينة|محاكاة|موافقة تجريبية|قاعدة تجريبية)\)/g;
+/* demo-only copy → what is true in the live preview (EN and AR) */
+const LIVE_TXT=[
+ ['Pay on credit · Net 30','Pay on credit'],['الدفع بالآجل · 30 يومًا','الدفع بالآجل'],
+ ['Simulated payment — no card details are collected and nothing is charged.','Card payments are not enabled in the preview yet.'],['دفع محاكى — لا تُجمع بيانات بطاقة ولا يتم خصم شيء.','الدفع بالبطاقة غير مفعّل في المعاينة بعد.'],
+ ['Simulated payment — nothing is charged','Not enabled in the preview yet'],['دفع محاكى — لا يتم خصم شيء','غير مفعّل في المعاينة بعد'],
+ ['Confirmed when funds arrive (about 30 s in this demo)','Confirmed when funds arrive'],['يتأكد عند وصول المبلغ (حوالي 30 ثانية في العرض)','يتأكد عند وصول المبلغ'],
+ ['Marked paid when received (instant in this demo)','Marked paid when received'],['تُعلّم مدفوعة عند الاستلام (فوري في العرض)','تُعلّم مدفوعة عند الاستلام'],
+ ['Instant · simulated','Instant'],['فوري · محاكى','فوري'],
+ ['PDF download is simulated in this preview','PDF download is not enabled in the preview yet'],['تنزيل PDF محاكى في هذه النسخة','تنزيل PDF غير مفعّل في المعاينة بعد'],
+ ['It may have been cleared by a demo reset.',''],['ربما حُذف عند إعادة ضبط العرض.',''],
+ ['Done · saved in this demo','Saved'],['تم · محفوظ في هذا العرض','تم الحفظ'],
+ ['mada •••• 4242 (sample)','Card'],['مدى •••• 4242 (تجريبية)','بطاقة'],
+ ['Card (simulated)','Card'],['بطاقة (محاكاة)','بطاقة'],
+ ['Rewards are samples. ',''],['المكافآت تجريبية. ',''],
+ ['sent to Huda for approval','sent for approval'],['لهدى للموافقة','للموافقة'],
+ ['Credit · Net 30','Credit'],['آجل · 30 يومًا','آجل'],
+ ['King Fahd Rd, Riyadh · receiving 6–11 AM','Delivery address and receiving hours from your account'],['طريق الملك فهد، الرياض · الاستلام 6–11 ص','عنوان التوصيل وساعات الاستلام من حسابك']];
+const liveTxt=v=>{ let o=v; LIVE_TXT.forEach(([f,r])=>{ if(o.indexOf(f)>-1) o=o.split(f).join(r); }); STRIP.lastIndex=0; o=o.replace(STRIP,''); STRIP.lastIndex=0; return o; };
+L.stripSample=root=>{ if(!root) return; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n; while((n=w.nextNode())){ const v=n.nodeValue, o=liveTxt(v); if(o!==v) n.nodeValue=o; }
+  root.querySelectorAll&&root.querySelectorAll('[aria-label],[title]').forEach(e=>{ ['aria-label','title'].forEach(k=>{ const a=e.getAttribute(k); if(a){ const o=liveTxt(a); if(o!==a) e.setAttribute(k,o); } }); });
+  /* demo-only controls */
+  root.querySelectorAll&&root.querySelectorAll('button,a').forEach(e=>{ if(/^(Simulate decline|محاكاة رفض|Simulate a scan|محاكاة مسح|Advance status \(demo\)|قدّم الحالة \(عرض\))$/.test((e.textContent||'').trim())) e.remove(); }); };
 L.post.push(()=>{ L.stripSample(document.querySelector('#main')); });
-if(window.MutationObserver) new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(x=>{ if(x.nodeType===1&&x.matches&&x.matches('.lv-sheet,.sheet,[role=dialog]')) L.stripSample(x); }))).observe(document.documentElement,{childList:true,subtree:true});
+/* checkout 'Deliver to' names the signed-in account, not the sample restaurant */
+L.post.push(c=>{ if(!c||c.id!=='b.checkout') return; const m=document.querySelector('#main'); if(!m) return; const nm=acctName(!!(MF.C&&MF.C.ar))||t('Your account','حسابك'); const w=document.createTreeWalker(m,NodeFilter.SHOW_TEXT); let n; while((n=w.nextNode())){ if(/Al Wadi Restaurant — Olaya|مطعم الوادي — العليا/.test(n.nodeValue)) n.nodeValue=nm; } });
+/* unit unknown → no dangling separator after 'excl. VAT' */
+L.post.push(()=>{ document.querySelectorAll('#main .pu').forEach(e=>{ const n=e.querySelector('.num'); if(n&&!n.textContent.trim()){ n.remove(); e.childNodes.forEach(x=>{ if(x.nodeType===3) x.nodeValue=x.nodeValue.replace(/\s*·\s*$/,''); }); } }); });
+if(window.MutationObserver) new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(x=>{ if(x.nodeType===1&&x.matches&&x.matches('.lv-sheet,.sheet,[role=dialog]')) L.stripSample(x); }))).observe(document.body||document.documentElement,{childList:true});
+{ const toast0=MF.toast; MF.toast=m=>toast0(typeof m==='string'?liveTxt(m):m); }
+
+/* links to screens this role can't open (role matrix in s-*.js / GRANT above) are shown as plain text, not dead ends */
+L.post.push(c=>{ const m=document.querySelector('#main'); if(!m||!c) return; m.querySelectorAll('a[href^="#/"]').forEach(a=>{ const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; const d=id&&MF.SCR[id]; if(d&&Array.isArray(d.r)&&!d.r.includes(c.role)){ const sp=document.createElement('div'); sp.className=a.className; sp.innerHTML=a.innerHTML; sp.querySelectorAll('.chev').forEach(x=>x.remove()); a.replaceWith(sp); } }); });
+
+/* product images: gateway image, else a branded initials tile (never a blank box) */
+(()=>{ const st=document.createElement('style'); st.textContent='.pt .img:has(.lv-pimg,.lv-ini){overflow:hidden;padding:0}img.lv-pimg{display:block;width:100%;height:100%;min-height:0;object-fit:contain;border-radius:inherit;background:#fff}.thumb:has(.lv-pimg,.lv-ini){padding:0;overflow:hidden}.lv-fb{display:contents}.lv-fb[hidden]{display:none}.lv-ini{display:grid;place-items:center;width:100%;height:100%;min-width:28px;min-height:28px;border-radius:inherit;background:linear-gradient(135deg,color-mix(in srgb,var(--c-brand,#0A6B4F) 16%,#fff),color-mix(in srgb,var(--c-brand,#0A6B4F) 6%,#fff));color:var(--c-brand,#0A6B4F);font-weight:700;letter-spacing:.02em;line-height:1;text-transform:uppercase;user-select:none}.lv-ini[data-s="s"]{font-size:11px}.lv-ini[data-s="m"]{font-size:20px}.lv-ini[data-s="l"]{font-size:40px}'; document.head.appendChild(st); })();
+const okImg=u=>{ if(typeof u!=='string'||!u) return null; if(u[0]==='/'&&u[1]!=='/') return u; try{ const x=new URL(u); if(x.origin===location.origin) return x.pathname+x.search; if(/\.catalystserverless\.(com|in|eu)$/.test(x.hostname)&&/\.catalystserverless\.(com|in|eu)$/.test(location.hostname)&&x.hostname===location.hostname) return x.pathname+x.search; }catch(e){} return null; };
+const initials=p=>{ const n=String((MF.C&&MF.C.ar?p.ar:p.en)||p.en||'').replace(/\([^)]*\)/g,' ').replace(/[^\p{L}\p{N}\s]/gu,' ').trim().split(/\s+/).filter(Boolean); return (n.slice(0,2).map(w=>[...w][0]).join('')||'MF'); };
+const tile=(p,sz)=>`<span class="lv-ini" data-s="${sz>=80?'l':sz>=40?'m':'s'}" role="img" aria-label="${esc(MF.pn?MF.pn(p):p.en)}">${esc(initials(p))}</span>`;
+L.pimg=(p,sz)=>{ if(!p) return tile({en:'MF'},sz); const u=okImg(p.img); return u?`<img class="lv-pimg" src="${esc(u)}" alt="" loading="lazy" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="lv-fb" hidden>${tile(p,sz)}</span>`:tile(p,sz); };
+L.cimg=(c,sz)=>{ const u=c&&okImg(c[3]); return u?`<img class="lv-cimg" src="${esc(u)}" alt="" loading="lazy" decoding="async" width="${sz}" height="${sz}" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>${G(c[1],sz)}</span>`:G(c&&c[1]||'box',sz); };
+/* list rows (search, reorder, cart, lists): product image in the thumb, missing catalogue items dropped */
+{ const prow0=MF.prow; MF.prow=(id,o)=>{ const p=RAW[id]; if(!p) return ''; const h=prow0(id,o); return h?h.replace(/<span class="thumb">[\s\S]*?<\/span>/,`<span class="thumb">${L.pimg(p,28)}</span>`):h; };
+  const pcard0=MF.pcard; MF.pcard=(id,o)=>RAW[id]?pcard0(id,o):''; }
+
+/* Books documents: read-only GETs; an unmapped account or an empty list shows a clear empty state */
+L.ui.fin=L.ui.fin||{};
+const listOf=j=>Array.isArray(j)?j:(j&&Array.isArray(j.data))?j.data:(j&&j.data&&Array.isArray(j.data.items))?j.data.items:null;
+L.loadFin=()=>{ const S=L.S(), role=S.session&&S.session.role; if(!role) return; const can=id=>{ const d=MF.SCR[id]; return d&&Array.isArray(d.r)&&d.r.includes(role); };
+  if(L.ui.fin.role===role) return; L.ui.fin={role};
+  const get=(path,key,map,ok)=>{ if(!ok) return Promise.resolve(); L.ui.fin[key]='loading';
+    return API.request('GET',path,undefined,{quiet:true}).then(j=>{ const a=listOf(j); if(a){ const S2=L.S(); S2[key]=a.map(map).filter(x=>x&&(x.no||x.id)); L.ui.fin[key]='ok'; if(L.store&&L.store.replace) L.store.replace(S2); } else L.ui.fin[key]='none'; },
+      e=>{ L.ui.fin[key]=e&&e.status===401?'auth':'none'; }); };
+  Promise.all([get('/invoices','invoices',nInv,can('b.invoices')||can('b.finance')),get('/payments','payments',nPay,can('b.finance')||can('b.receipt')),get('/credit-notes','cns',nCn,can('b.returns'))]).then(()=>{ if(MF.booted) L.rr(); }); };
+API.on('boot',()=>setTimeout(L.loadFin,0));
+{ const lg=L.login; L.login=r=>{ const x=lg(r); setTimeout(L.loadFin,0); return x; }; }
+{ const d=MF.SCR['b.invoices']; if(d){ const r0=d.render; d.render=c=>{ const s=L.S(); if(!(s.invoices||[]).length){ const ld=L.ui.fin.invoices==='loading'; return ld?H.empty('doc',t('Loading invoices…','جارٍ تحميل الفواتير…'),''):H.empty('doc',t('No invoices yet','لا توجد فواتير بعد'),t('Invoices from Zoho Books show here once your account is linked and invoiced.','تظهر هنا فواتير Zoho Books بعد ربط حسابك وإصدار الفواتير.')); } return r0(c); }; } }
+
+/* preferences: device-local; sent only when the user changes one (quiet if not enabled in the preview) */
+['lang','setlang','settheme'].forEach(k=>{ const f=ACT[k]; if(typeof f==='function') ACT[k]=(...a)=>{ const r=f(...a); try{ API.savePrefs(Object.assign({},L.S().prefs)); }catch(e){} return r; }; });
 
 /* ---------- no simulated time: statuses only change when the gateway says so ---------- */
 L.ticks.length=0;
@@ -153,15 +209,15 @@ const nOrder=o=>{ const lines=Array.isArray(o.lines)?o.lines:Array.isArray(o.lin
     total:g(o.total),sub_total:g(o.sub_total),tax_total:g(o.tax_total),branch:nz(o.branch_name,typeof o.branch==='string'?o.branch:(o.branch&&o.branch.name)||null),pay:nz(o.payment_mode,nz(o.pay,null)),po:nz(o.po,null),inv:nz(o.invoice_number,nz(o.inv,null)),pts:0}; };
 const nInv=i=>{ const g=v=>fin(v)?Number(v):null; const total=g(nz(i.total,i.amt)), balance=g(i.balance); const ls=Array.isArray(i.lines)?i.lines:Array.isArray(i.line_items)?i.line_items:null;
   return {no:String(nz(i.no,nz(i.invoice_number,nz(i.id,'')))),order:nz(i.order,nz(i.salesorder_number,null)),d:toTs(nz(i.d,i.date)),due:toTs(nz(i.due,i.due_date)),amt:total,total,balance,paid:fin(i.paid)?Number(i.paid):(total!=null&&balance!=null?Math.round((total-balance)*100)/100:0),cr:fin(i.cr)?Number(i.cr):0,status:lc(i.status),lines:ls?nLines(ls):null,sub_total:g(i.sub_total),tax_total:g(i.tax_total)}; };
-const nPay=p=>({id:String(nz(p.id,nz(p.payment_number,''))),ts:toTs(nz(p.ts,p.date)),amt:fin(nz(p.amt,p.amount))?Number(nz(p.amt,p.amount)):null,m:lc(nz(p.m,p.payment_mode)),ref:nz(p.reference_number,null),inv:(Array.isArray(p.inv)?p.inv:Array.isArray(p.invoices)?p.invoices.map(x=>typeof x==='object'?nz(x.invoice_number,nz(x.no,'')):x):[]).filter(Boolean).map(String)});
-const nCn=n=>{ const why=Array.isArray(n.why)?n.why:[nz(n.reason,null),nz(n.reason_ar,null)]; const en=nz(why[0],'Credit note'); return {no:String(nz(n.creditnote_number,nz(n.no,nz(n.number,nz(n.invoice_number,''))))),inv:String(nz(n.inv,nz(n.invoice_number,''))),amt:fin(nz(n.amt,n.total))?Number(nz(n.amt,n.total)):null,ts:toTs(nz(n.ts,n.date)),why:[String(en),String(nz(why[1],'إشعار دائن'))]}; };
+const nPay=p=>({id:String(nz(p.id,nz(p.payment_number,''))),ts:toTs(nz(p.ts,p.date)),amt:fin(nz(p.amt,nz(p.amount,p.total)))?Number(nz(p.amt,nz(p.amount,p.total))):null,m:lc(nz(p.m,nz(p.payment_mode,p.method))),ref:nz(p.reference_number,null),inv:(Array.isArray(p.inv)?p.inv:Array.isArray(p.invoices)?p.invoices.map(x=>typeof x==='object'?nz(x.invoice_number,nz(x.no,'')):x):[]).filter(Boolean).map(String)});
+const nCn=n=>{ const why=Array.isArray(n.why)?n.why:[nz(n.reason,null),nz(n.reason_ar,null)]; const en=nz(why[0],'Credit note'); return {no:String(nz(n.creditnote_number,nz(n.no,nz(n.number,nz(n.invoice_number,''))))),inv:String(nz(n.inv,nz(n.invoice_number,nz(n.invoice,'')))),amt:fin(nz(n.amt,nz(n.total,n.amount)))?Number(nz(n.amt,nz(n.total,n.amount))):null,ts:toTs(nz(n.ts,n.date)),why:[String(en),String(nz(why[1],'إشعار دائن'))]}; };
 API.setTransform('shop',x=>{ if(!x||typeof x!=='object') return null; const cur=L.S(); const base=JSON.parse(JSON.stringify(cur)); const A=v=>Array.isArray(v)?v:[];
   base.ver=2; base.session=cur.session; base.prefs=cur.prefs; base.me=cur.me;
   base.orders=A(x.orders).map(nOrder).filter(o=>o.id); base.invoices=A(x.invoices).map(nInv).filter(i=>i.no); base.payments=A(x.payments).map(nPay).filter(p=>p.id); base.cns=A(nz(x.cns,x.creditnotes||x.credit_notes)).map(nCn);
   const c=x.credit||{}; base.credit={limit:fin(c.limit)?Number(c.limit):null,used:fin(c.used)?Number(c.used):null,available:fin(c.available)?Number(c.available):null,hold:c.hold===true};
   if(x.cart&&typeof x.cart==='object'&&!Array.isArray(x.cart)) base.cart=x.cart; if(Array.isArray(x.favs)) base.favs=x.favs.map(String); if(Array.isArray(x.lists)) base.lists=x.lists;
   if(Array.isArray(x.notifs)) base.notifs=x.notifs.filter(n=>n&&n.txt).map(n=>({id:String(n.id),ts:toTs(n.ts)||Date.now(),ic:nz(n.ic,'bell'),txt:Array.isArray(n.txt)?[String(nz(n.txt[0],'')),String(nz(n.txt[1],nz(n.txt[0],'')))]:[String(n.txt),String(n.txt)],go:n.go||null,read:!!n.read}));
-  if(fin(x.points)) base.points=Number(x.points);
+  if(fin(x.points)) base.points=Number(x.points); const OB=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{}; base.par=OB(x.par); base.onhand=OB(x.onhand);
   return base; });
 /* order statuses: the screens read o.st / o.fixed, set here from the gateway `status` */
 /* 12. a write the preview refuses (501) is rolled back so no phantom order or payment stays on screen */
@@ -223,7 +279,7 @@ const LIVE_OK=new Set(('b.home b.catalog b.search b.product b.cart b.checkout b.
 Object.entries(MF.SCR).forEach(([id,d])=>{ if(!d||LIVE_OK.has(id)||/^ob\./.test(id)) return; d.t=()=>t('Not available yet','غير متاح بعد'); d.v=null; d.noSeg=true;
   d.render=c=>H.empty('lock',t('Not available in the preview yet','غير متاح في المعاينة بعد'),t('This screen will show live data once it is switched on.','ستعرض هذه الشاشة بيانات حية عند تفعيلها.'),H.btns(H.btn(t('Help & support','المساعدة والدعم'),{k:'sec',go:'cc.home'}))); d.__lvBlocked=true; });
 /* pro-ops status strip: real catalogue status instead of the sample "Synced 10:42 · Zoho Books · OK · SAMPLE" */
-const after0=MF.after; if(after0) MF.after=C=>{ after0(C); const s=document.querySelector('#main .ops'); if(!s) return; const n=API.catalogCount; s.innerHTML=n?`<span><i aria-hidden="true"></i>${t('Live','حي')}</span><span>${t('Zoho Commerce','زوهو كومرس')} · ${N(n)} ${t('items','صنف')}</span><span>${dt(Date.now(),{weekday:'short',day:'numeric',month:'short'})}</span>`:''; if(!n) s.remove(); };
+const after0=MF.after; if(after0) MF.after=C=>{ after0(C); document.querySelectorAll('#main .fm-hero').forEach(x=>x.remove()); /* fresh-market promo banner is sample copy */ const s=document.querySelector('#main .ops'); if(!s) return; const n=API.catalogCount; s.innerHTML=n?`<span><i aria-hidden="true"></i>${t('Live','حي')}</span><span>${t('Zoho Commerce','زوهو كومرس')} · ${N(n)} ${t('items','صنف')}</span><span>${dt(Date.now(),{weekday:'short',day:'numeric',month:'short'})}</span>`:''; if(!n) s.remove(); };
 
 /* ob.* sign-up prototypes show a masked sample mobile — hide it in live mode */
 L.post.push(c=>{ if(!/^ob\./.test(c.id)) return; const m=document.querySelector('#main'); if(!m) return; const w=document.createTreeWalker(m,NodeFilter.SHOW_TEXT); let n; while((n=w.nextNode())){ if(n.nodeValue.indexOf('4821')>=0) n.nodeValue=n.nodeValue.replace(/5•\s*•••\s*4821|4821/g,'5• ••• ••••'); } });
