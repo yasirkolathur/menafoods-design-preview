@@ -13,7 +13,7 @@ const LIVE=API.isLive('shop'), P=API.paths||{staffCustomers:'/staff/customers',i
 const STAFF=['acct','admin'];   /* portal ACCOUNTANT and staff ADMIN; the gateway answers 403 to other roles */
 const isStaff=()=>STAFF.includes(role());
 const DOCS=['doc.view','b.invoices','b.invoice','b.payments','b.receipt','b.creditnotes','b.statement'];
-const SAFE=new Set(['invf','pdf','wdprint','wdshare','scpick','scretry','scclear','scmore']);   /* read-only actions kept on document screens */
+const SAFE=new Set(['invf','pdf','wdprint','wdshare','scpick','scretry','scclear','scmore','scdocretry']);   /* read-only actions kept on document screens */
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const qp=k=>L.qp?L.qp(k):new URLSearchParams(location.hash.split('?')[1]||'').get(k);
 const nz=(v,d)=>v==null||v===''?d:v;
@@ -78,12 +78,25 @@ L.scr('st.customers',{a:'backoffice',r:STAFF.join(' '),t:['Customer invoices & p
 
 /* ---------- documents for the chosen customer ---------- */
 L.ui.scd=L.ui.scd||{};
+/* the gateway says why a list is empty: reason = NO_DOCUMENTS | NOT_MAPPED_TO_BOOKS | CUSTOMER_NOT_FOUND | a Books failure code */
+const reasonSt=(r,isErr)=>{ if(!r) return null; const k=String(r).toUpperCase(); if(k==='NO_DOCUMENTS') return 'none'; if(k==='NOT_MAPPED_TO_BOOKS'||k==='BOOKS_NOT_MAPPED') return 'unmapped'; if(k==='CUSTOMER_NOT_FOUND') return 'nf';
+  if(isErr&&/^(NOT_ENABLED_IN_PREVIEW|NF|NOT_FOUND|FORBIDDEN|AUTH_REQUIRED|UNAUTHORIZED)$/.test(k)) return null; return 'books'; };
+const RS={none:['doc','No documents yet for this customer','لا توجد مستندات لهذا العميل بعد',''],
+  unmapped:['lock','Not linked to Zoho Books yet','غير مرتبط بـ Zoho Books بعد','This customer’s documents will show once the account is linked in Zoho Books.','ستظهر مستندات هذا العميل بعد ربط الحساب في Zoho Books.'],
+  nf:['inbox','Customer not found','لم يتم العثور على العميل','Check the customer and choose again.','تحقق من العميل واختر مجددًا.'],
+  books:['inbox','Couldn’t load from Zoho Books','تعذّر التحميل من Zoho Books','Zoho Books didn’t respond. Try again in a moment.','لم يستجب Zoho Books. حاول مجددًا بعد قليل.']};
+const rsHtml=st=>{ const r=RS[st]; if(!r) return ''; const btn=st==='books'?`<div class="btns"><button type="button" class="btn sec" data-act="scdocretry"><span>${t('Try again','حاول مجددًا')}</span></button></div>`:st==='nf'?H.btns(H.btn(t('Choose a customer','اختر عميلًا'),{go:'st.customers',k:'sec'})):'';
+  return `<div class="lv-rs" data-rs="${st}">${H.empty(r[0],t(r[1],r[2]),r[3]?t(r[3],r[4]):'',btn)}</div>`; };
+ACT.scdocretry=()=>{ if(L.ui.sc){ loadDocs(L.ui.sc); L.rr(); } };
 function loadDocs(c){
   if(!LIVE){ L.ui.scd={invoices:'ok',payments:'ok',cns:'ok'}; return; }
   const S=L.S(); S.invoices=[]; S.payments=[]; S.cns=[]; L.ui.scd={invoices:'loading',payments:'loading',cns:'loading'}; if(L.store&&L.store.replace) L.store.replace(S);
   const N=L.norm||{}, qs='?'+encodeURIComponent(P.customerParam||'customer_id')+'='+encodeURIComponent(c.id), my=c.id;
-  const get=(path,key,fn)=>API.request('GET',path+qs,undefined,{quiet:true}).then(j=>{ if(!L.ui.sc||L.ui.sc.id!==my) return; const a=listOf(j); const S2=L.S(); S2[key]=a&&fn?a.map(fn).filter(x=>x&&(x.no||x.id)):[]; L.ui.scd[key]='ok'; if(L.store&&L.store.replace) L.store.replace(S2); },
-    e=>{ if(!L.ui.sc||L.ui.sc.id!==my) return; L.ui.scd[key]=errSt(e); });
+  L.ui.scmeta={};
+  const meta=j=>{ if(!j||typeof j!=='object'||Array.isArray(j)) return; const src=Object.assign({},j.meta||{},j); if(src.books_contact_status) L.ui.scmeta.status=String(src.books_contact_status).toLowerCase(); if(src.books_customer_number) L.ui.scmeta.no=String(src.books_customer_number); };
+  const get=(path,key,fn)=>API.request('GET',path+qs,undefined,{quiet:true}).then(j=>{ if(!L.ui.sc||L.ui.sc.id!==my) return; meta(j); const a=listOf(j); const S2=L.S(); S2[key]=a&&fn?a.map(fn).filter(x=>x&&(x.no||x.id)):[];
+      L.ui.scd[key]=S2[key].length?'ok':reasonSt(j&&!Array.isArray(j)?(j.reason||(j.meta&&j.meta.reason)):null)||'ok'; if(L.store&&L.store.replace) L.store.replace(S2); },
+    e=>{ if(!L.ui.sc||L.ui.sc.id!==my) return; const b=e&&e.body; meta(b); meta(b&&b.error&&b.error.details); const rc=b&&((b.error&&(b.error.reason||b.error.code))||b.reason); L.ui.scd[key]=reasonSt(rc,true)||errSt(e); });
   Promise.all([get(P.invoices,'invoices',N.nInv),get(P.payments,'payments',N.nPay),get(P.creditNotes,'cns',N.nCn)]).then(()=>{ if(MF.booted) L.rr(); }); }
 ACT.scpick=id=>{ const c=L.ui.scById[id]; if(!c) return; L.ui.sc=c; recent.add(c); loadDocs(c); L.go('doc.view',{k:null,id:null,back:null}); };
 ACT.scclear=()=>{ L.ui.sc=null; L.go('st.customers'); };
@@ -92,9 +105,10 @@ const PM={banktransfer:['Bank transfer','تحويل بنكي'],bank_transfer:['B
 const payLabel=m=>L.payLabel?L.payLabel(m):(PM[String(m||'').toLowerCase()]?tt(PM[String(m||'').toLowerCase()]):'—');
 const payRow=p=>({ic:'wallet',tone:'ok',t:`${LTR(esc(p.id))} · ${M(p.amt)}`,s:`${dshort(p.ts)} · ${payLabel(p.m)}`,go:'b.receipt',q:{id:p.id}});
 const cnRow=cn=>({ic:'receipt',tone:'ok',t:t('Credit note','إشعار دائن')+' '+LTR(esc(cn.no||'—')),s:`${esc(Array.isArray(cn.why)?tt(cn.why):nz(cn.why,''))}${cn.inv?' · '+t('on','على')+' '+LTR(esc(cn.inv)):''}${cn.ts?' · '+dshort(cn.ts):''}`,end:M(cn.amt==null?null:-cn.amt),go:cn.inv&&(L.S().invoices||[]).some(i=>i.no===cn.inv)?'b.invoice':null,q:cn.inv?{no:cn.inv}:null});
-const box=(rows,key,art,en,ar)=>{ const st=L.ui.scd[key]; if(rows.length) return H.rows(rows); if(st==='loading') return `<p class="note" role="status">${t('Loading…','جارٍ التحميل…')}</p>`; if(st==='na') return H.empty('lock',NA()[0],''); if(st==='denied') return H.empty('lock',DENIED()[0],''); if(st==='err') return H.empty(art,t('Couldn’t load this list','تعذّر تحميل هذه القائمة'),''); return H.empty(art,t(en,ar),''); };
+const box=(rows,key,art,en,ar)=>{ const st=L.ui.scd[key]; if(rows.length) return H.rows(rows); if(st==='loading') return `<p class="note" role="status">${t('Loading…','جارٍ التحميل…')}</p>`; if(st==='na') return H.empty('lock',NA()[0],''); if(st==='denied') return H.empty('lock',DENIED()[0],''); if(st==='err') return H.empty(art,t('Couldn’t load this list','تعذّر تحميل هذه القائمة'),''); if(RS[st]) return rsHtml(st); return H.empty(art,t(en,ar),''); };
 const byTs=(k)=>(a,b)=>(b[k]||0)-(a[k]||0);
-const hub=()=>{ const s=L.S(); const inv=(s.invoices||[]).slice().sort(byTs('d')), pay=(s.payments||[]).slice().sort(byTs('ts')), cns=(s.cns||[]).slice().sort(byTs('ts'));
+const hub=()=>{ const s=L.S(); const sd=L.ui.scd||{}; if(LIVE&&['unmapped','nf','none','books'].includes(sd.invoices)&&sd.invoices===sd.payments&&sd.invoices===sd.cns) return rsHtml(sd.invoices);
+  const inv=(s.invoices||[]).slice().sort(byTs('d')), pay=(s.payments||[]).slice().sort(byTs('ts')), cns=(s.cns||[]).slice().sort(byTs('ts'));
   return H.sec(t('Invoices','الفواتير'),box(inv.slice(0,5).map(L.invRow),'invoices','doc','No invoices yet','لا توجد فواتير بعد'),{act:inv.length?[t('All invoices','كل الفواتير'),'b.invoices']:null})
    +H.sec(t('Payments','المدفوعات'),box(pay.slice(0,5).map(payRow),'payments','wallet','No payments yet','لا توجد مدفوعات بعد'),{act:pay.length?[t('All payments','كل المدفوعات'),'b.payments']:null})
    +H.sec(t('Credit notes','الإشعارات الدائنة'),box(cns.slice(0,5).map(cnRow),'cns','receipt','No credit notes yet','لا توجد إشعارات دائنة بعد'),{act:cns.length?[t('All credit notes','كل الإشعارات الدائنة'),'b.creditnotes']:null})
@@ -124,10 +138,10 @@ const roHook=c=>{ if(!c||!isStaff()||!DOCS.includes(c.id)||!L.ui.sc) return;
   document.querySelectorAll('body a[href^="#/"]').forEach(a=>{ if(a.closest('nav.nb,header,.lv-ro,.top,.appbar')) return; const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; if(id&&!canOpen(id)) a.remove(); });
   document.querySelectorAll('body [data-act]').forEach(b=>{ if(b.closest('nav.nb,header,.lv-ro,.top,.appbar')) return; if(!SAFE.has(b.dataset.act)) b.remove(); });
   document.querySelectorAll('#main .btns,#main .grp').forEach(x=>{ if(!x.children.length) x.remove(); });
-  const m=document.querySelector('#main'); if(m&&!m.querySelector('.lv-ro')){ const sc=L.ui.sc;
-    m.insertAdjacentHTML('afterbegin',`<div class="lv-ro card pad" role="note"><span class="avs" aria-hidden="true">${esc(ini(cname(sc)))}</span><span class="b"><b>${esc(cname(sc))}</b>${sc.no?`<span class="s">${t('Customer no.','رقم العميل')} ${LTR(esc(sc.no))}</span>`:''}</span>${H.pill('neu',t('Read-only','للقراءة فقط'))}<a class="lv-ro-ch" href="${MF.href('st.customers',{k:null,id:null,no:null,back:null})}">${t('Change','تغيير')}</a></div>`); } };
+  const m=document.querySelector('#main'); if(m&&!m.querySelector('.lv-ro')){ const sc=L.ui.sc, mt=L.ui.scmeta||{};
+    m.insertAdjacentHTML('afterbegin',`<div class="lv-ro card pad" role="note"><span class="avs" aria-hidden="true">${esc(ini(cname(sc)))}</span><span class="b"><b>${esc(cname(sc))}</b>${sc.no?`<span class="s">${t('Customer no.','رقم العميل')} ${LTR(esc(sc.no))}</span>`:''}${mt.no&&mt.no!==sc.no?`<span class="s">${t('Zoho Books no.','رقم Zoho Books')} ${LTR(esc(mt.no))}</span>`:''}${mt.status==='inactive'?`<span class="s lv-inact">${H.pill('warn',t('Inactive in Books','غير نشط في Zoho Books'))}</span>`:''}</span>${H.pill('neu',t('Read-only','للقراءة فقط'))}<a class="lv-ro-ch" href="${MF.href('st.customers',{k:null,id:null,no:null,back:null})}">${t('Change','تغيير')}</a></div>`); } };
 if(Array.isArray(L.post)) L.post.unshift(roHook);
-(()=>{ const st=document.createElement('style'); st.textContent='.lv-ro{display:flex;align-items:center;gap:10px;margin:0 16px 12px}.lv-ro .b{flex:1;min-width:0;display:flex;flex-direction:column}.lv-ro .s{font-size:12.5px;color:var(--c-text-2)}.lv-ro-ch{font-weight:600;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center;padding:0 4px}'; document.head.appendChild(st); })();
+(()=>{ const st=document.createElement('style'); st.textContent='.lv-ro{display:flex;align-items:center;gap:10px;margin:0 16px 12px}.lv-ro .b{flex:1;min-width:0;display:flex;flex-direction:column}.lv-ro .s{font-size:12.5px;color:var(--c-text-2)}.lv-inact{margin-top:4px}.lv-ro-ch{font-weight:600;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center;padding:0 4px}'; document.head.appendChild(st); })();
 
 /* other roles never see a chosen customer */
 { const lg=L.login; if(lg) L.login=r=>{ if(!STAFF.includes(r)) L.ui.sc=null; return lg(r); }; }
