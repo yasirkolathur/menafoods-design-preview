@@ -176,7 +176,7 @@ L.loadFin=()=>{ const S=L.S(), role=S.session&&S.session.role; if(!role) return;
   const get=(path,key,map,ok)=>{ if(!ok) return Promise.resolve(); L.ui.fin[key]='loading';
     return API.request('GET',path,undefined,{quiet:true}).then(j=>{ const a=listOf(j); if(a){ const S2=L.S(); S2[key]=a.map(map).filter(x=>x&&(x.no||x.id)); L.ui.fin[key]='ok'; if(L.store&&L.store.replace) L.store.replace(S2); } else L.ui.fin[key]='none'; },
       e=>{ L.ui.fin[key]=e&&e.status===401?'auth':'none'; }); };
-  Promise.all([get('/invoices','invoices',nInv,can('b.invoices')||can('b.finance')||can('doc.view')),get('/payments','payments',nPay,can('b.finance')||can('b.receipt')||can('b.payments')),get('/credit-notes','cns',nCn,can('b.returns')||can('b.creditnotes'))]).then(()=>{ if(MF.booted) L.rr(); }); };
+  Promise.all([get(API.paths.invoices,'invoices',nInv,can('b.invoices')||can('b.finance')||can('doc.view')),get(API.paths.payments,'payments',nPay,can('b.finance')||can('b.receipt')||can('b.payments')),get(API.paths.creditNotes,'cns',nCn,can('b.returns')||can('b.creditnotes'))]).then(()=>{ if(MF.booted) L.rr(); }); };
 API.on('boot',()=>setTimeout(L.loadFin,0));
 { const lg=L.login; L.login=r=>{ const x=lg(r); setTimeout(L.loadFin,0); return x; }; }
 { const d=MF.SCR['b.invoices']; if(d){ const r0=d.render; d.render=c=>{ const s=L.S(); if(!(s.invoices||[]).length){ const ld=L.ui.fin.invoices==='loading'; return ld?H.empty('doc',t('Loading invoices…','جارٍ تحميل الفواتير…'),''):H.empty('doc',t('No invoices yet','لا توجد فواتير بعد'),t('Invoices from Zoho Books show here once your account is linked and invoiced.','تظهر هنا فواتير Zoho Books بعد ربط حسابك وإصدار الفواتير.')); } return r0(c); }; } }
@@ -237,6 +237,7 @@ const ST4=()=>[t('Confirmed','مؤكد'),t('Picked & packed','تم التجهي�
 const lname=(o,k)=>{ const p=RAW[k]; if(p) return MF.pn?MF.pn(p):tt([p.en,p.ar]); return o.ln&&o.ln[k]?tt(o.ln[k]):t('Item','صنف'); };
 const PAYM={banktransfer:['Bank transfer','تحويل بنكي'],bank_transfer:['Bank transfer','تحويل بنكي'],transfer:['Bank transfer','تحويل بنكي'],cash:['Cash','نقدًا'],check:['Cheque','شيك'],cheque:['Cheque','شيك'],creditcard:['Credit card','بطاقة ائتمان'],credit_card:['Credit card','بطاقة ائتمان'],card:['Card','بطاقة'],bankremittance:['Bank remittance','حوالة بنكية'],bank_remittance:['Bank remittance','حوالة بنكية'],others:['Other','أخرى'],other:['Other','أخرى'],mada:['mada','مدى'],credit:['On account (credit)','على الحساب (آجل)'],cod:['Cash on delivery','الدفع عند الاستلام']};
 const payLabel=m=>{ const k=lc(m); return PAYM[k]?tt(PAYM[k]):'—'; };
+L.payLabel=payLabel; L.norm={nInv,nPay,nCn};   /* used by the staff document views (mf-staff-docs.js) */
 const stLabel=o=>{ const p=L.stPill(o); return H.pill(p[0],p[1]); };
 L.def('b.order',{t:()=>t('Order #','الطلب ‎#')+(qp('id')||''),render:(c)=>{ const o=L.ord(qp('id')||''); if(!o) return H.empty('box',t('Order not found','الطلب غير موجود'),'',H.btns(H.btn(t('All orders','كل الطلبات'),{go:'b.orders'})));
   const T=L.tot(o), g=L.stage(o); let h='';

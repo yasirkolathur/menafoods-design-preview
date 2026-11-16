@@ -13,6 +13,15 @@
 (function(){
 'use strict';
 const C=Object.assign({mode:'auto',baseUrl:'',prefix:'/server/mf_zoho_gateway/v1',erpPrefix:'/server/mf_erp_connector/v1',timeoutMs:15000},window.MF_API_CONFIG||{});
+/* Gateway paths used by the screens — the ONE place to change them (or override with MF_API_CONFIG.paths).
+   Relative to `prefix`. Staff document views add ?{customerParam}=<id>. */
+const PATHS=Object.freeze(Object.assign({
+  staffCustomers:'/staff/customers',   // GET ?q=  → {data:[{id,name,name_ar?,customer_number?}]}
+  invoices:'/invoices',                // GET [?customer_id=] → {data:[{no,date,due,total,balance,status,lines?}]}
+  payments:'/payments',                // GET [?customer_id=] → {data:[{id,ts,amount,method,invoices[]}]}
+  creditNotes:'/credit-notes',         // GET [?customer_id=] → {data:[{no,invoice,amount,date,reason,reason_ar?}]}
+  customerParam:'customer_id'
+},C.paths||{}));
 /* Live mode turns on ONLY when
    (a) the page itself is served by the Catalyst preview host (same origin as the gateway), or
    (b) the URL asks for ?mode=live — then the gateway is called on a RELATIVE path of the current origin.
@@ -222,5 +231,5 @@ function savePrefs(p){
   try{ if(sessionStorage.getItem('mfapi-prefs-off')) return Promise.resolve(null); }catch(e){}
   return request('PUT','/me/preferences',p||{},{quiet:true}).catch(e=>{ if(e&&e.notEnabled){ try{ sessionStorage.setItem('mfapi-prefs-off','1'); }catch(x){} } return null; });
 }
-window.MFAPI={ savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+window.MFAPI={ paths:PATHS, savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
 })();
