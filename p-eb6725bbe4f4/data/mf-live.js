@@ -151,7 +151,7 @@ const parseHash=()=>{ const h=location.hash.replace(/^#\/?/,''), i=h.indexOf('?'
 /* after /me: honour the kept request if the user holds it (and remember that side) */
 const applyWant=()=>{ const w=L.ui.want; L.ui.want=null; if(!w) return false; const S=L.S(), av=avail(), pick=pickFor(w.role,av,S&&S.me); if(!pick) return false;
   sideSet(pick); S.session={role:pick,ts:Date.now()}; L.save();
-  const ok=canOpen(w.id,pick), q=ok?new URLSearchParams(w.q||''):new URLSearchParams(); if(!ok){ const o=new URLSearchParams(w.q||''); ['lang','theme'].forEach(k=>{ if(o.get(k)) q.set(k,o.get(k)); }); }
+  const ok=canOpen(w.id,pick)||(pick===w.role&&!!w.id), q=ok?new URLSearchParams(w.q||''):new URLSearchParams(); if(!ok){ const o=new URLSearchParams(w.q||''); ['lang','theme'].forEach(k=>{ if(o.get(k)) q.set(k,o.get(k)); }); }
   q.set('role',pick); const target=`#/${ok?w.id:L.home(pick)}?${q.toString()}`;
   if(location.hash!==target) location.hash=target; else if(MF.booted) L.rr(); return true; };
 function roleGuard(){ const av=avail();
@@ -162,7 +162,7 @@ function roleGuard(){ const av=avail();
   if(!av.length) return false;
   const pick=pickFor(r,av,S&&S.me);
   if(pick){ const ok=canOpen(id,pick); if(L.ui.meFresh) sideSet(pick);
-    if(pick===r&&ok) return false;   /* the app sets the session from the URL */
+    if(pick===r) return false;   /* a role the user holds: the app sets the session from the URL (and shows its own no-access page on a screen that role can't open) */
     q.set('role',pick); if(!ok) ['id','no','k','sku','back'].forEach(k=>q.delete(k)); S.session={role:pick,ts:Date.now()}; L.save();
     history.replaceState(history.state,'',location.pathname+location.search+`#/${ok?id:L.home(pick)}?${q.toString()}`); return true; }
   const def=sessRole(); if(!def) return false;
