@@ -414,7 +414,7 @@ L.refreshMe=()=>{ const S0=L.S(); if(!S0||!S0.session||L.ui.meBusy||L.ui.meFresh
       const wr=want&&((want.role==='staff'||want.role==='customer')?R.roles.find(x=>L.side(x)===want.role):want.role);
       if(wr&&R.roles.includes(wr)){ S.session={role:wr,ts:Date.now()}; L.save(); if(location.hash!==want.hash) location.hash=want.hash; else { roleGuard(); if(MF.booted) MF.render(true); } return; }
       if(same&&cur&&R.roles.includes(cur)){ L.save(); if(MF.booted) L.rr(); return; }   /* same user, same side: re-render so the side switch shows */
-      const last=sideGet(me); L.save(); L.login(last&&R.roles.includes(last)?last:(R.roles[0]||'viewer')); },
+      const last=sideGet(me), h0=location.hash; L.save(); L.login(last&&R.roles.includes(last)?last:(R.roles[0]||'viewer')); if(location.hash===h0&&MF.booted) L.rr(); },
     e=>{ L.ui.meBusy=false; L.ui.want=null; if(e&&e.status===401){ const S=L.S(); S.session=null; S.me=null; L.save(); L.ui.meTried=false; if(MF.booted) L.logout(); } }); };
 /* sign-in on this load already read /me */
 { const s2=signedIn2; signedIn2=j=>{ L.ui.meFresh=true; L.ui.want=null; return s2(j); }; }
