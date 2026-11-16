@@ -123,7 +123,7 @@ L.acc=role=>{ const R=MF.ROLES[role]||MF.ROLES.viewer; return [role,meName(false
 const applyCtx=()=>{ ['owner','bm','buyer','cashier','viewer','recv','cfin'].forEach(r=>{ if(MF.ROLES[r]) MF.ROLES[r].ctx=[acctName(false)||'',acctName(true)||acctName(false)||'']; }); ['sales','van','driver','store','acct','mgr','admin'].forEach(r=>{ if(MF.ROLES[r]) MF.ROLES[r].ctx=['MENAFoods','MENAFoods']; }); };
 applyCtx();
 const SELLER_URL=()=>/theme-fresh-market\//.test(location.pathname)?'seller.html':'../direction-b/seller.html';
-const signedIn2=j=>{ const me=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:(j||{}); const S=L.S(); S.me=me; const R=L.rolesFromMe(me); S.me.avail=R.roles; L.save(); applyCtx();
+let signedIn2=j=>{ const me=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:(j||{}); const S=L.S(); S.me=me; const R=L.rolesFromMe(me); S.me.avail=R.roles; L.save(); applyCtx();
   if(!R.roles.length&&R.seller){ location.href=SELLER_URL(); return; }
   const last=sideGet(me); L.login(last&&R.roles.includes(last)?last:(R.roles[0]||'viewer')); };
 /* ---------- roles: only the signed-in user's own roles (from /me); mixed users switch sides with a visible control ---------- */
@@ -138,10 +138,17 @@ ACT.lvrole=r=>{ if(avail().includes(r)){ sideSet(r); L.login(r); } };
 ACT.lvside=side=>{ const av=avail(); const last=sideGet(L.S().me); const pick=(last&&av.includes(last)&&L.side(last)===side)?last:av.find(r=>L.side(r)===side); if(pick){ sideSet(pick); L.login(pick); } };
 /* ?role= is honoured only when it is one of the user's roles; otherwise it is dropped and the user lands on their default screen */
 const sessRole=()=>{ const S=L.S(), av=avail(), r=S&&S.session&&S.session.role; if(r&&av.includes(r)) return r; const last=sideGet(S&&S.me); return last&&av.includes(last)?last:(av[0]||null); };
-function roleGuard(){ const av=avail(); if(!av.length) return false;
+function roleGuard(){ const av=avail();
   const h=location.hash.replace(/^#\/?/,''), i=h.indexOf('?'), id=i<0?h:h.slice(0,i); if(!id||/^(app\.login|ob\.)/.test(id)) return false;
   const q=new URLSearchParams(i<0?'':h.slice(i+1)), r=q.get('role'), S=L.S();
+  /* until /me has been read on this load, a role the cached list lacks is kept aside and honoured once /me confirms it */
+  if(r&&!L.ui.meFresh&&!av.includes(r)&&r!=='guest') L.ui.want={role:r,hash:location.hash};
+  if(!av.length) return false;
   if(r&&av.includes(r)) return false;
+  /* ?role=staff / ?role=customer: the user's own role on that side (if they have one) */
+  if(r==='staff'||r==='customer'){ const last=sideGet(S&&S.me), pick=(last&&av.includes(last)&&L.side(last)===r)?last:av.find(x=>L.side(x)===r);
+    if(pick){ const d=MF.SCR[id], ok=d&&Array.isArray(d.r)&&d.r.includes(pick); q.set('role',pick); sideSet(pick); S.session={role:pick,ts:Date.now()}; L.save();
+      history.replaceState(history.state,'',location.pathname+location.search+`#/${ok?id:L.home(pick)}?${q.toString()}`); return true; } }
   const def=sessRole(); if(!def) return false;
   if(S.session&&S.session.role!==def){ S.session={role:def,ts:Date.now()}; L.save(); }
   q.set('role',def); if(r) ['id','no','k','sku','back'].forEach(k=>q.delete(k));
@@ -395,5 +402,22 @@ Object.entries(MF.SCR).forEach(([id,d])=>{ if(!d||typeof d.render!=='function'||
 /* the gateway session expired */
 API.on('auth',()=>{ const S=L.S(); if(S&&S.session){ S.session=null; L.save(); } });
 /* role guard before the first render */
-{ const b0=MF.boot; if(typeof b0==='function') MF.boot=function(){ try{ L.roleGuard(); }catch(e){} return b0.apply(this,arguments); }; }
+/* /me is read again on every load of a signed-in device: roles change on the server and the Catalyst user can change, so the cached list is never trusted on its own */
+const meOf=j=>(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:(j||{});
+L.ui.meFresh=false; L.ui.meBusy=false;
+L.refreshMe=()=>{ const S0=L.S(); if(!S0||!S0.session||L.ui.meBusy||L.ui.meFresh) return null; L.ui.meBusy=true;
+  return API.get('/me').then(j=>{ L.ui.meBusy=false; L.ui.meFresh=true; const me=meOf(j), S=L.S(), prevU=uidOf(S.me), R=L.rolesFromMe(me);
+      S.me=me; S.me.avail=R.roles; applyCtx();
+      const want=L.ui.want; L.ui.want=null;
+      if(!R.roles.length){ L.save(); if(R.seller){ location.href=SELLER_URL(); return; } }
+      const cur=S.session&&S.session.role, same=!!prevU&&prevU===uidOf(me);
+      const wr=want&&((want.role==='staff'||want.role==='customer')?R.roles.find(x=>L.side(x)===want.role):want.role);
+      if(wr&&R.roles.includes(wr)){ S.session={role:wr,ts:Date.now()}; L.save(); if(location.hash!==want.hash) location.hash=want.hash; else { roleGuard(); if(MF.booted) MF.render(true); } return; }
+      if(same&&cur&&R.roles.includes(cur)){ L.save(); if(MF.booted) L.rr(); return; }   /* same user, same side: re-render so the side switch shows */
+      const last=sideGet(me); L.save(); L.login(last&&R.roles.includes(last)?last:(R.roles[0]||'viewer')); },
+    e=>{ L.ui.meBusy=false; L.ui.want=null; if(e&&e.status===401){ const S=L.S(); S.session=null; S.me=null; L.save(); L.ui.meTried=false; if(MF.booted) L.logout(); } }); };
+/* sign-in on this load already read /me */
+{ const s2=signedIn2; signedIn2=j=>{ L.ui.meFresh=true; L.ui.want=null; return s2(j); }; }
+/* role guard before the first render; then /me */
+{ const b0=MF.boot; if(typeof b0==='function') MF.boot=function(){ try{ L.roleGuard(); }catch(e){} const r=b0.apply(this,arguments); try{ L.refreshMe(); }catch(e){} return r; }; }
 })();
