@@ -85,16 +85,24 @@ const more1=MF.SCR.more&&MF.SCR.more.render; if(more1) MF.SCR.more.render=c=>mor
 const BIZ={OWNER:'owner',ADMIN:'bm',BRANCH_MANAGER:'bm',MANAGER:'bm',BM:'bm',BUYER:'buyer',FINANCE:'cfin',RECEIVER:'recv',VIEWER:'viewer'};
 const STAFF={ADMIN:'admin',ACCOUNTANT:'acct',SALESPERSON:'sales',SALES_DELIVERY:'van',STOREKEEPER:'store',DELIVERY:'driver'};
 const BIZ_ORDER=['OWNER','ADMIN','FINANCE','BUYER','RECEIVER','VIEWER'], STAFF_ORDER=['ADMIN','ACCOUNTANT','SALESPERSON','SALES_DELIVERY','STOREKEEPER','DELIVERY'];
-const up=v=>String(v==null?'':v).trim().toUpperCase().replace(/[\s-]+/g,'_');
-L.rolesFromMe=me=>{ const out=[]; let seller=false;
-  const hasNew=me&&(Object.prototype.hasOwnProperty.call(me,'business_role')||Array.isArray(me.portal_roles));
-  if(hasNew){ let b=up(me.business_role); if(!b){ const cur=(Array.isArray(me.accounts)?me.accounts:[]).find(x=>x&&x.current); if(cur&&cur.role) b=up(cur.role); }   /* membership role on the current account */ if(b==='SELLER') seller=true; else if(BIZ[b]) out.push(BIZ[b]); else if(b) out.push('viewer');
-    const pr=(me.portal_roles||[]).map(up); STAFF_ORDER.forEach(r=>{ if(pr.includes(r)) out.push(STAFF[r]); }); }
-  else { const rs=(me&&me.roles||[]).map(up); if(rs.includes('SELLER')) seller=true;
-    BIZ_ORDER.forEach(r=>{ if(rs.includes(r)&&!out.includes(BIZ[r])) out.push(BIZ[r]); });          /* ADMIN in roles[] = customer admin, never the staff console */
-    STAFF_ORDER.filter(r=>r!=='ADMIN').forEach(r=>{ if(rs.includes(r)) out.push(STAFF[r]); });
-    if(!out.length&&rs.some(r=>r&&r!=='SELLER')) out.push('viewer'); }
-  return {roles:[...new Set(out)],seller}; };
+/* a role value may be a string or an object ({role:'ADMIN'}, {name:'Admin'}, {code:…}); lists may be arrays, a comma string or one object — compared case-insensitively */
+const rv=v=>(v&&typeof v==='object')?(v.role!=null?v.role:v.name!=null?v.name:v.code!=null?v.code:v.key!=null?v.key:v.value!=null?v.value:v.id):v;
+const up=v=>{ v=rv(v); return (typeof v==='string'||typeof v==='number')?String(v).trim().toUpperCase().replace(/[\s-]+/g,'_'):''; };
+const ups=v=>(Array.isArray(v)?v:typeof v==='string'?v.split(','):(v&&typeof v==='object')?[v]:[]).map(up).filter(Boolean);
+L.rolesFromMe=me=>{ const out=[]; let seller=false; me=me&&typeof me==='object'?me:{};
+  const R=ups(me.roles), P=ups(me.portal_roles), push=r=>{ if(r&&!out.includes(r)) out.push(r); };
+  const hasNew=Object.prototype.hasOwnProperty.call(me,'business_role')||Object.prototype.hasOwnProperty.call(me,'portal_roles');
+  if(hasNew){ let b=up(me.business_role); if(!b){ const cur=(Array.isArray(me.accounts)?me.accounts:[]).find(x=>x&&x.current); if(cur&&cur.role) b=up(cur.role); }   /* membership role on the current account */
+    if(b==='SELLER') seller=true; else if(BIZ[b]) push(BIZ[b]); else if(b) push('viewer');
+    if(R.includes('SELLER')&&!b) seller=true;
+    /* staff roles: portal_roles[] plus any portal role in roles[]; ADMIN in roles[] is the staff ADMIN unless it is this user's business role */
+    STAFF_ORDER.forEach(r=>{ if(P.includes(r)||(R.includes(r)&&(r!=='ADMIN'||b!=='ADMIN'))) push(STAFF[r]); }); }
+  else { if(R.includes('SELLER')) seller=true;
+    const biz=BIZ_ORDER.filter(r=>r!=='ADMIN'&&R.includes(r)), adminStaff=R.includes('ADMIN')&&biz.length>0;   /* ADMIN next to another business role = the staff ADMIN; alone = customer admin */
+    BIZ_ORDER.forEach(r=>{ if(R.includes(r)&&!(r==='ADMIN'&&adminStaff)) push(BIZ[r]); });
+    STAFF_ORDER.forEach(r=>{ if(R.includes(r)&&(r!=='ADMIN'||adminStaff)) push(STAFF[r]); });
+    if(!out.length&&R.some(r=>r&&r!=='SELLER')) push('viewer'); }
+  return {roles:out,seller}; };
 /* customer-side read-only roles that do not exist in the sample */
 const RO=['owner','bm','buyer'];
 MF.ROLES.viewer={n:['Customer · view only','العميل · عرض فقط'],grp:'customer',ctx:['',''],nav:[['home','b.home',['Home','الرئيسية']],['grid','b.catalog',['Catalogue','المنتجات']],['box','b.orders',['Orders','الطلبات']],['user','more',['More','المزيد']]]};
