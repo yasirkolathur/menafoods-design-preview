@@ -117,8 +117,36 @@ applyCtx();
 const SELLER_URL=()=>/theme-fresh-market\//.test(location.pathname)?'seller.html':'../direction-b/seller.html';
 const signedIn2=j=>{ const me=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:(j||{}); const S=L.S(); S.me=me; const R=L.rolesFromMe(me); S.me.avail=R.roles; L.save(); applyCtx();
   if(!R.roles.length&&R.seller){ location.href=SELLER_URL(); return; }
-  L.login(R.roles[0]||'viewer'); };
-ACT.lvrole=r=>{ const av=(L.S().me&&L.S().me.avail)||[]; if(av.includes(r)) L.login(r); };
+  const last=sideGet(me); L.login(last&&R.roles.includes(last)?last:(R.roles[0]||'viewer')); };
+/* ---------- roles: only the signed-in user's own roles (from /me); mixed users switch sides with a visible control ---------- */
+const avail=()=>{ const S=L.S(); return (S&&S.me&&Array.isArray(S.me.avail))?S.me.avail:[]; };
+const uidOf=me=>String((me&&((me.user&&(me.user.id||me.user.email||me.user.mobile))||me.id))||'');
+const SIDE_K='mfpv-live-side';
+function sideGet(me){ try{ const v=JSON.parse(localStorage.getItem(SIDE_K)||'null'); return v&&v.u===uidOf(me)&&typeof v.role==='string'?v.role:null; }catch(e){ return null; } }
+function sideSet(r){ try{ localStorage.setItem(SIDE_K,JSON.stringify({u:uidOf(L.S().me),role:r})); }catch(e){} }
+const isStaffR=r=>!!(MF.ROLES[r]&&MF.ROLES[r].grp==='staff');
+L.side=r=>isStaffR(r)?'staff':'customer';
+ACT.lvrole=r=>{ if(avail().includes(r)){ sideSet(r); L.login(r); } };
+ACT.lvside=side=>{ const av=avail(); const last=sideGet(L.S().me); const pick=(last&&av.includes(last)&&L.side(last)===side)?last:av.find(r=>L.side(r)===side); if(pick){ sideSet(pick); L.login(pick); } };
+/* ?role= is honoured only when it is one of the user's roles; otherwise it is dropped and the user lands on their default screen */
+const sessRole=()=>{ const S=L.S(), av=avail(), r=S&&S.session&&S.session.role; if(r&&av.includes(r)) return r; const last=sideGet(S&&S.me); return last&&av.includes(last)?last:(av[0]||null); };
+function roleGuard(){ const av=avail(); if(!av.length) return false;
+  const h=location.hash.replace(/^#\/?/,''), i=h.indexOf('?'), id=i<0?h:h.slice(0,i); if(!id||/^(app\.login|ob\.)/.test(id)) return false;
+  const q=new URLSearchParams(i<0?'':h.slice(i+1)), r=q.get('role'), S=L.S();
+  if(r&&av.includes(r)) return false;
+  const def=sessRole(); if(!def) return false;
+  if(S.session&&S.session.role!==def){ S.session={role:def,ts:Date.now()}; L.save(); }
+  q.set('role',def); if(r) ['id','no','k','sku','back'].forEach(k=>q.delete(k));
+  const href=r?`#/${L.home(def)}?${q.toString()}`:`#/${id}?${q.toString()}`;   /* a foreign role → default landing; no role → keep the screen, add the user's role */
+  history.replaceState(history.state,'',location.pathname+location.search+href); return true; }
+window.addEventListener('hashchange',e=>{ if(roleGuard()){ e.stopImmediatePropagation(); if(MF.booted) MF.render(true); } },true);   /* capture: runs before the app's own hashchange handlers */
+L.roleGuard=()=>{ roleGuard(); const S=L.S(), d=sessRole(); if(d&&S.session&&S.session.role&&!avail().includes(S.session.role)){ S.session={role:d,ts:Date.now()}; L.save(); } };   /* first run at the end of this file, before the app boots */
+/* the side switch: customer home and More (customer side), staff home and More (staff side) */
+const sideBar=c=>{ const av=avail(), cur=c.role; if(!av.some(isStaffR)||!av.some(r=>!isStaffR(r))||!av.includes(cur)) return '';
+  const toStaff=!isStaffR(cur);
+  return `<div class="lv-side card pad" role="region" aria-label="${toStaff?t('Staff access','وصول الموظف'):t('Customer access','وصول العميل')}"><span class="lv-side-ic" aria-hidden="true">${I(toStaff?'users':'store',22)}</span><span class="b"><b>${toStaff?t('You also have staff access','لديك أيضًا وصول موظف'):t('You also have a customer account','لديك أيضًا حساب عميل')}</b><span class="s">${toStaff?t('You’re in the customer app.','أنت في تطبيق العميل.'):t('You’re in the staff app.','أنت في تطبيق الموظف.')}</span></span><button type="button" class="btn pri sm" data-act="lvside" data-arg="${toStaff?'staff':'customer'}"><span>${toStaff?t('Switch to staff','التبديل إلى وضع الموظف'):t('Switch to customer','التبديل إلى وضع العميل')}</span></button></div>`; };
+L.post.push(c=>{ if(!c||!['b.home','more','lv.staff'].includes(c.id)) return; const m=document.querySelector('#main'); if(!m||m.querySelector('.lv-side')) return; const h=sideBar(c); if(h) m.insertAdjacentHTML('afterbegin',h); });
+(()=>{ const st=document.createElement('style'); st.textContent='.lv-side{display:flex;align-items:center;gap:12px;margin:0 16px 14px;border:1.5px solid var(--c-brand,#0a7);flex-wrap:wrap}.lv-side .b{flex:1;min-width:160px;display:flex;flex-direction:column;gap:2px}.lv-side .s{font-size:13px;color:var(--c-text-2,#555)}.lv-side-ic{color:var(--c-brand,#0a7);display:inline-flex}.lv-side .btn{min-height:44px}'; document.head.appendChild(st); })();
 /* b.home greeting without a sample name */
 L.def('b.home',{t:()=>{ const h=new Date().getHours(); const g=h<12?t('Good morning','صباح الخير'):h<18?t('Good afternoon','مساء الخير'):t('Good evening','مساء الخير'); const n=String(meName(MF.C&&MF.C.ar)||'').split(' ')[0]; return n?g+(MF.C&&MF.C.ar?'، ':', ')+n:g; }});
 /* deny screen in core names "The owner (Faisal)" */
@@ -322,7 +350,8 @@ L.post.push(()=>{ document.querySelectorAll('nav.nb a.tab').forEach(a=>{ const i
   a.replaceWith(sp); }); });
 (()=>{ const st=document.createElement('style'); st.textContent='.lv-soon-tab{cursor:default;opacity:.55;position:relative}.lv-soon-tab .lv-tag{display:block;font-size:9.5px;line-height:1.1;font-weight:600;letter-spacing:.01em;padding:1px 5px;border-radius:999px;background:var(--c-surface-2,#eee);color:var(--c-text-2,#555);margin-top:1px;white-space:nowrap}'; document.head.appendChild(st); })();
 /* landing: the role's first live tab; a portal role with no live tab lands on a clear staff home */
-{ const home0=L.home; L.home=role=>{ const R=MF.ROLES[role]; if(!R||!R.nav||!R.nav.length) return home0(role); const ok=R.nav.map(n=>n[1]).find(id=>!blocked(id)&&id!=='more'); return ok||'lv.staff'; }; }
+{ const home0=L.home; L.home=role=>{ const R=MF.ROLES[role]; if(R&&R.grp==='staff') return 'lv.staff';   /* portal-only roles: the staff home */
+  if(!R||!R.nav||!R.nav.length) return home0(role); const ok=R.nav.map(n=>n[1]).find(id=>!blocked(id)&&id!=='more'); return ok||'lv.staff'; }; }
 const STAFF_TOOLS={acct:['Finance tools are coming to the preview soon','أدوات المالية قادمة قريبًا'],sales:['Sales tools are coming to the preview soon','أدوات المبيعات قادمة قريبًا'],van:['Sales and delivery tools are coming to the preview soon','أدوات البيع والتوصيل قادمة قريبًا'],driver:['Delivery tools are coming to the preview soon','أدوات التوصيل قادمة قريبًا'],store:['Warehouse tools are coming to the preview soon','أدوات المستودع قادمة قريبًا'],admin:['Admin tools are coming to the preview soon','أدوات الإدارة قادمة قريبًا'],mgr:['Approval tools are coming to the preview soon','أدوات الاعتماد قادمة قريبًا']};
 L.scr('lv.staff',{a:'home',r:'sales van driver store acct mgr admin',t:['Home','الرئيسية'],noSeg:true,
   render:c=>{ const R=MF.ROLES[c.role]||{nav:[]}; const h=STAFF_TOOLS[c.role]||['Your tools are coming to the preview soon','أدواتك قادمة قريبًا'];
@@ -357,4 +386,6 @@ Object.entries(MF.SCR).forEach(([id,d])=>{ if(!d||typeof d.render!=='function'||
 });
 /* the gateway session expired */
 API.on('auth',()=>{ const S=L.S(); if(S&&S.session){ S.session=null; L.save(); } });
+/* role guard before the first render */
+{ const b0=MF.boot; if(typeof b0==='function') MF.boot=function(){ try{ L.roleGuard(); }catch(e){} return b0.apply(this,arguments); }; }
 })();
