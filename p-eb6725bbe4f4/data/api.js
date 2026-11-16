@@ -44,7 +44,7 @@ const ENTITIES={
  shop:[
   {p:'cart',kind:'doc',put:'/cart'},
   {p:'favs',kind:'doc',put:'/me/favourites'},
-  {p:'prefs',kind:'doc',put:'/me/preferences'},
+  {p:'prefs',kind:'doc',local:true},   /* sent only on an explicit change, see savePrefs */
   {p:'lists',kind:'list',key:'id',post:'/lists',patch:'/lists/{id}'},
   {p:'par',kind:'doc',put:'/stock/par-levels'},
   {p:'onhand',kind:'doc',put:'/stock/counts'},
@@ -91,24 +91,47 @@ const J=x=>JSON.stringify(x===undefined?null:x);
 /* ---------- network (live only) ---------- */
 let session=null;   /* never persisted; the gateway may instead set an httpOnly cookie */
 const uid=()=>(crypto&&crypto.randomUUID)?crypto.randomUUID():('k'+Date.now()+Math.random().toString(36).slice(2));
+/* Catalyst web SDK access token (the preview gate and /app/ use the same one). Kept in memory only for
+   a few minutes — never stored, logged or sent anywhere except same-origin gateway calls. */
+let tokC=null,tokAt=0,tokP=null;
+const fmtTok=t=>{ if(!t) return null; t=String(t).trim(); if(!t) return null; return /^(Zoho-oauthtoken|Bearer)\s+/i.test(t)?t:'Zoho-oauthtoken '+t; };
+function sdkToken(force){
+  const pv=window.__mfpvAuth; if(pv&&typeof pv.token==='function') return Promise.resolve().then(()=>pv.token(!!force)).then(fmtTok,()=>null);
+  const a=window.catalyst&&window.catalyst.auth; if(!a||typeof a.generateAuthToken!=='function') return Promise.resolve(null);
+  if(!force&&tokC&&Date.now()-tokAt<45*60*1000) return Promise.resolve(tokC);
+  if(tokP) return tokP;
+  tokP=Promise.race([Promise.resolve().then(()=>a.generateAuthToken()),new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),6000))])
+    .then(r=>{ const u=r&&Object.prototype.hasOwnProperty.call(r,'content')?r.content:r; tokC=fmtTok((r&&r.access_token)||(u&&u.access_token)); tokAt=Date.now(); return tokC; },()=>null)
+    .then(v=>{ tokP=null; return v; });
+  return tokP;
+}
+const sameOrig=u=>{ try{ return new URL(u,location.href).origin===location.origin; }catch(e){ return false; } };
 function request(method,path,body,opt){
   opt=opt||{};
   if(!LIVE) return Promise.reject(Object.assign(new Error('sample mode: no network'),{code:'SAMPLE_MODE'}));
   const url=(C.baseUrl||'')+(opt.erp?C.erpPrefix:C.prefix)+path;
-  const ctl=('AbortController' in window)?new AbortController():null; const tm=ctl&&setTimeout(()=>ctl.abort(),C.timeoutMs);
-  const h={'Accept':'application/json','Accept-Language':document.documentElement.lang||'en'};
-  if(body!==undefined) h['Content-Type']='application/json';
-  if(method!=='GET') h['Idempotency-Key']=opt.idem||uid();
-  if(session) h['Authorization']='Bearer '+session;   /* short-lived session token from /auth/otp/verify, memory only */
-  return fetch(url,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),credentials:'include',cache:'no-store',signal:ctl&&ctl.signal})
-   .then(r=>r.status===204?null:r.json().catch(()=>null).then(j=>{ if(!r.ok){ const er=j&&j.error; const e=new Error((er&&er.message)||(typeof er==='string'?er:'')||('HTTP '+r.status)); e.status=r.status; e.body=j; e.code=typeof er==='string'?er:(er&&er.code)||''; e.message_ar=er&&er.message_ar; e.notEnabled=isNotEnabled(r.status,j); if(e.notEnabled) notice(path,e); throw e; } return j; }))
-   .finally(()=>tm&&clearTimeout(tm));
+  const idem=method!=='GET'?(opt.idem||uid()):null;
+  const send=(tk,retried)=>{
+    const ctl=('AbortController' in window)?new AbortController():null; const tm=ctl&&setTimeout(()=>ctl.abort(),C.timeoutMs);
+    const h={'Accept':'application/json','Accept-Language':document.documentElement.lang||'en'};
+    if(body!==undefined) h['Content-Type']='application/json';
+    if(idem) h['Idempotency-Key']=idem;
+    if(session) h['Authorization']='Bearer '+session;   /* short-lived session token from /auth/otp/verify, memory only */
+    else if(tk) h['Authorization']=tk;                   /* Catalyst SDK token, same origin only */
+    return fetch(url,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),credentials:'include',cache:'no-store',signal:ctl&&ctl.signal})
+     .then(r=>{ if(r.status===401&&tk&&!retried&&!session) return sdkToken(true).then(t2=>t2&&t2!==tk?send(t2,true):r); return r; })
+     .finally(()=>tm&&clearTimeout(tm));
+  };
+  const tkP=(!session&&sameOrig(url))?sdkToken(false):Promise.resolve(null);
+  return tkP.then(tk=>send(tk,false))
+   .then(r=>r.status===204?null:r.json().catch(()=>null).then(j=>{ if(!r.ok){ const er=j&&j.error; const e=new Error((er&&er.message)||(typeof er==='string'?er:'')||('HTTP '+r.status)); e.status=r.status; e.body=j; e.code=typeof er==='string'?er:(er&&er.code)||''; e.message_ar=er&&er.message_ar; e.notEnabled=isNotEnabled(r.status,j); if(e.notEnabled&&!opt.quiet) notice(path,e); throw e; } return j; }));
 }
 
 /* ---------- outbox (live only) ---------- */
 const OBK='mfapi-outbox';
 const outbox={ all:()=>ls.get(OBK)||[], push(op){ const a=outbox.all(); a.push(op); ls.set(OBK,a); }, set:a=>ls.set(OBK,a) };
 let flushing=false;
+
 function flush(){
   if(!LIVE||flushing||!navigator.onLine) return Promise.resolve();
   const a=outbox.all(); if(!a.length) return Promise.resolve();
@@ -121,7 +144,7 @@ if(LIVE){ addEventListener('online',flush); setInterval(flush,30000); setTimeout
 /* ---------- per-entity diff -> operations ---------- */
 function diff(store,prev,next){
   const ops=[];
-  (ENTITIES[store]||[]).forEach(e=>{ if(e.ro) return;
+  (ENTITIES[store]||[]).forEach(e=>{ if(e.ro||e.local) return;
     const a=getP(prev,e.p), b=getP(next,e.p); if(J(a)===J(b)) return;
     if(e.kind==='doc'){ if(e.put) ops.push({m:'PUT',path:e.put,body:b,erp:e.erp}); return; }
     const A=new Map((a||[]).map(x=>[String(x&&typeof x==='object'?x[e.key]:x),x]));
@@ -166,7 +189,7 @@ function store(name,key){
   const k=ck(key,name);
   return {
     name, key,
-    read(){ const v=ls.get(k); if(isLive(name)&&v&&!synced[name]) synced[name]=JSON.parse(J(v)); return v; },
+    read(){ return ls.get(k); },   /* live: the diff base is set only from the server snapshot (boot), never from this device's cache */
     write(state){
       ls.set(k,state);
       if(isLive(name)){ const prev=synced[name]; if(prev){ const ops=diff(name,prev,state); if(ops.length){ const bid='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); const restore={}; new Set([...Object.keys(prev),...Object.keys(state)]).forEach(x=>{ if(x==='session'||x==='prefs') return; if(J(prev[x])!==J(state[x])) restore[x]=prev[x]===undefined?null:JSON.parse(J(prev[x])); }); batches[bid]={restore}; ops.forEach(op=>{ op.batch=bid; op.store=name; outbox.push(op); }); flush(); } } synced[name]=JSON.parse(J(state)); }
@@ -192,5 +215,12 @@ function strip(name,state){
 const pref={ get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 
 const get=(path)=>request('GET',path);
-window.MFAPI={ setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+/* preferences: saved on this device; sent to the gateway only when the user changes one. Quiet on failure;
+   once the gateway answers 501 we stop sending for this browser session. */
+function savePrefs(p){
+  if(!LIVE||!isLive('shop')) return Promise.resolve(null);
+  try{ if(sessionStorage.getItem('mfapi-prefs-off')) return Promise.resolve(null); }catch(e){}
+  return request('PUT','/me/preferences',p||{},{quiet:true}).catch(e=>{ if(e&&e.notEnabled){ try{ sessionStorage.setItem('mfapi-prefs-off','1'); }catch(x){} } return null; });
+}
+window.MFAPI={ savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
 })();
