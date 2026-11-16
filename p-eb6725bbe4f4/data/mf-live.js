@@ -307,6 +307,10 @@ L.scr('b.creditnotes',{a:'invoices',r:FINR.join(' '),t:['Credit notes','الإش
 const LIVE_OK=new Set(('lv.staff doc.view b.payments b.creditnotes b.home b.catalog b.search b.product b.cart b.checkout b.orders b.order b.track b.finance b.invoices b.invoice b.pay b.receipt b.statement b.credit b.hold b.creditApp b.limit b.returns b.lists b.reorder b.par '+COMMON.join(' ')).split(' '));
 Object.entries(MF.SCR).forEach(([id,d])=>{ if(!d||LIVE_OK.has(id)||/^ob\./.test(id)) return; d.__lvT0=d.t; d.t=()=>t('Not available yet','غير متاح بعد'); d.v=null; d.noSeg=true;
   d.render=c=>H.empty('lock',t('Not available in the preview yet','غير متاح في المعاينة بعد'),t('This screen will show live data once it is switched on.','ستعرض هذه الشاشة بيانات حية عند تفعيلها.'),H.btns(H.btn(t('Help & support','المساعدة والدعم'),{k:'sec',go:'cc.home'}))); d.__lvBlocked=true; });
+/* header account link: no 'demo controls' wording in live mode */
+const ACCT_LBL={'Account, switch role, demo controls':'Account, switch role','الحساب وتبديل الدور وأدوات العرض':'الحساب وتبديل الدور'};
+const fixAcct=()=>document.querySelectorAll('[aria-label]').forEach(e=>{ const v=ACCT_LBL[e.getAttribute('aria-label')]; if(v) e.setAttribute('aria-label',v); });
+L.post.push(()=>{ fixAcct(); setTimeout(fixAcct,0); });
 /* ---------- navigation: tabs whose screen is not live yet stay visible but disabled ---------- */
 const blocked=id=>{ const d=MF.SCR[id]; return !d||!!d.__lvBlocked; };
 L.post.push(()=>{ document.querySelectorAll('nav.nb a.tab').forEach(a=>{ const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; if(!id||!blocked(id)) return;
