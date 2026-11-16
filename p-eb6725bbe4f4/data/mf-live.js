@@ -314,6 +314,8 @@ const fixAcct=()=>document.querySelectorAll('[aria-label]').forEach(e=>{ const v
 L.post.push(()=>{ fixAcct(); setTimeout(fixAcct,0); });
 /* ---------- navigation: tabs whose screen is not live yet stay visible but disabled ---------- */
 const blocked=id=>{ const d=MF.SCR[id]; return !d||!!d.__lvBlocked; };
+/* a role whose bottom nav has no More tab (owner: the 5th tab is Hub) gets More in place of its last not-live tab */
+Object.values(MF.ROLES||{}).forEach(R=>{ if(!R||!Array.isArray(R.nav)||R.nav.some(n=>n&&n[1]==='more')) return; for(let i=R.nav.length-1;i>=0;i--){ if(R.nav[i]&&blocked(R.nav[i][1])){ R.nav[i]=['more','more',['More','المزيد']]; break; } } });
 L.post.push(()=>{ document.querySelectorAll('nav.nb a.tab').forEach(a=>{ const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; if(!id||!blocked(id)) return;
   const sp=document.createElement('span'); sp.className='tab lv-soon-tab'; sp.setAttribute('aria-disabled','true'); sp.innerHTML=a.innerHTML; sp.querySelectorAll('.bdg,.vh').forEach(x=>x.remove());   /* sample counts */
   const tl=sp.querySelector('.tl'); const tag=`<span class="lv-tag">${t('Coming soon','قريبًا')}</span>`; if(tl) tl.insertAdjacentHTML('afterend',tag); else sp.insertAdjacentHTML('beforeend',tag);
