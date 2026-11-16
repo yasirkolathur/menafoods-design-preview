@@ -12,8 +12,9 @@ const nz=(v,f)=>(v==null||v===''||v==='null')?f:v;
 /* ---------- 1. guard every product lookup (cart, orders, favourites, lists) ---------- */
 const RAW=MF.DATA.P;
 const STUB=k=>({en:'Item no longer in the catalogue',ar:'صنف لم يعد في الكتالوج',g:'box',pk:['—','—'],pr:null,u:['',''],cat:'',moq:1,stock:'out',missing:true,id:k});
-MF.DATA.P=new Proxy(RAW,{ get(o,k){ if(typeof k!=='string'||k in o||k==='toJSON'||k==='then') return o[k]; return /^(p\d+|mk_|\d{6,}|[A-Za-z0-9_-]{2,})/.test(k)?STUB(k):undefined; } });
-MF.prod=id=>MF.DATA.P[id];
+/* live only: prototype screens that name sample keys (p1…p12, mk_*) or stale ids get a clearly-labelled stub instead of crashing.
+   Sample mode keeps the original object untouched, so existence checks behave exactly as before. */
+if(LIVE){ MF.DATA.P=new Proxy(RAW,{ get(o,k){ if(typeof k!=='string'||k in o) return o[k]; return /^(p\d+|mk_.+|\d{6,})$/.test(k)?STUB(k):undefined; } }); MF.prod=id=>MF.DATA.P[id]; }
 const add0=L.addCart; L.addCart=(sku,d,silent)=>{ const p=RAW[sku]; if(!p){ if(d>0) L.toast?L.toast(t('This item is no longer in the catalogue','هذا الصنف لم يعد في الكتالوج')):0; const c=L.S().cart; if(c&&c[sku]!=null&&d<0){ delete c[sku]; L.save(); L.rr(); } return; } return add0(sku,d,silent); };
 /* drop unknown keys from cart / favourites / lists once the catalogue is known */
 const prune=()=>{ const S=L.S(); if(!S) return; let ch=false; Object.keys(S.cart||{}).forEach(k=>{ if(!RAW[k]){ delete S.cart[k]; ch=true; } }); if(Array.isArray(S.favs)){ const f=S.favs.filter(k=>RAW[k]); if(f.length!==S.favs.length){ S.favs=f; ch=true; } } (S.lists||[]).forEach(l=>{ if(Array.isArray(l.items)){ const a=l.items.filter(x=>RAW[Array.isArray(x)?x[0]:(x&&x.sku)||x]); if(a.length!==l.items.length){ l.items=a; ch=true; } } else if(l.items&&typeof l.items==='object'){ Object.keys(l.items).forEach(k=>{ if(!RAW[k]){ delete l.items[k]; ch=true; } }); } }); MF.cart=S.cart; if(ch) L.save(); };
