@@ -113,8 +113,8 @@ function flush(){
   if(!LIVE||flushing||!navigator.onLine) return Promise.resolve();
   const a=outbox.all(); if(!a.length) return Promise.resolve();
   flushing=true; const op=a[0];
-  return request(op.m,op.path,op.body,{idem:op.idem,erp:op.erp}).then(()=>{ outbox.set(outbox.all().slice(1)); flushing=false; return flush(); },
-    e=>{ flushing=false; if(e.notEnabled||(e.status&&e.status>=400&&e.status<500&&e.status!==401&&e.status!==429)){ outbox.set(outbox.all().slice(1)); emit('rejected',{op,error:e.body||String(e)}); return flush(); } });
+  return request(op.m,op.path,op.body,{idem:op.idem,erp:op.erp}).then(()=>{ const rest=outbox.all().slice(1); outbox.set(rest); if(op.batch&&!rest.some(x=>x.batch===op.batch)) delete batches[op.batch]; flushing=false; return flush(); },
+    e=>{ flushing=false; if(e.notEnabled||(e.status&&e.status>=400&&e.status<500&&e.status!==401&&e.status!==429)){ const rest=outbox.all().slice(1).filter(x=>!op.batch||x.batch!==op.batch); outbox.set(rest); const b=op.batch&&batches[op.batch]; delete batches[op.batch]; emit('rejected',{op,store:op.store,restore:b?b.restore:null,error:e.body||String(e),notEnabled:!!e.notEnabled}); return flush(); } });
 }
 if(LIVE){ addEventListener('online',flush); setInterval(flush,30000); setTimeout(flush,1500); }
 
@@ -134,19 +134,27 @@ function diff(store,prev,next){
 
 /* ---------- 'not enabled in the preview' (HTTP 501): final, never retried, shown inline ---------- */
 function notice(path,e){
-  emit('rejected',{path,code:'not_enabled_in_preview',status:e&&e.status});
+  emit('notenabled',{path,code:'not_enabled_in_preview',status:e&&e.status});
   try{
-    let n=document.getElementById('mfapi-notice');
+    let n=document.getElementById('mfapi-notice')||notice.n;
     if(!n){ n=document.createElement('div'); n.id='mfapi-notice'; n.setAttribute('role','status'); n.setAttribute('aria-live','polite');
       n.style.cssText='position:fixed;inset-inline:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:9999;background:#1f2937;color:#fff;border-radius:12px;padding:12px 44px 12px 14px;font:500 14px/1.4 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:560px;margin-inline:auto';
       document.body.appendChild(n); }
     n.innerHTML='<strong></strong><span style="display:block;opacity:.85;font-weight:400"></span><button type="button" aria-label="'+T('Dismiss','إغلاق')+'" style="position:absolute;inset-inline-end:6px;top:6px;background:none;border:0;color:#fff;font-size:20px;width:36px;height:36px;cursor:pointer">×</button>';
     n.querySelector('strong').textContent=T(NOT_IN_PREVIEW[0],NOT_IN_PREVIEW[1]);
     n.querySelector('span').textContent=T('Nothing was changed. This action will work once it is switched on.','لم يتغير شيء. سيعمل هذا الإجراء عند تفعيله.');
-    n.querySelector('button').onclick=()=>n.remove();
-    clearTimeout(notice.t); notice.t=setTimeout(()=>{ n&&n.remove(); },8000);
+    if(!n.isConnected) document.body.appendChild(n);
+    notice.n=n; const done=()=>{ n.remove(); notice.n=null; };
+    n.querySelector('button').onclick=done;
+    /* screens re-render document.body — keep the notice on screen until it times out or is dismissed */
+    if(!notice.mo&&window.MutationObserver){ notice.mo=new MutationObserver(()=>{ if(notice.n&&!notice.n.isConnected&&document.body) document.body.appendChild(notice.n); }); notice.mo.observe(document.body,{childList:true}); }
+    clearTimeout(notice.t); notice.t=setTimeout(done,8000);
   }catch(x){}
 }
+/* ---------- boot readiness + transforms (the app registers them once its catalogue is ready) ---------- */
+const batches={}, transforms={}, readyP={}, readyR={};
+const whenReady=name=>{ if(!readyP[name]){ readyP[name]=new Promise(r=>{ readyR[name]=r; setTimeout(r,20000); }); } return readyP[name]; };
+const markReady=name=>{ whenReady(name); readyR[name](); };
 /* ---------- events ---------- */
 const subs={};
 const on=(ev,fn)=>{ (subs[ev]=subs[ev]||[]).push(fn); };
@@ -161,14 +169,15 @@ function store(name,key){
     read(){ const v=ls.get(k); if(isLive(name)&&v&&!synced[name]) synced[name]=JSON.parse(J(v)); return v; },
     write(state){
       ls.set(k,state);
-      if(isLive(name)){ const prev=synced[name]; if(prev){ diff(name,prev,state).forEach(op=>outbox.push(op)); flush(); } synced[name]=JSON.parse(J(state)); }
+      if(isLive(name)){ const prev=synced[name]; if(prev){ const ops=diff(name,prev,state); if(ops.length){ const bid='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); const restore={}; new Set([...Object.keys(prev),...Object.keys(state)]).forEach(x=>{ if(x==='session'||x==='prefs') return; if(J(prev[x])!==J(state[x])) restore[x]=prev[x]===undefined?null:JSON.parse(J(prev[x])); }); batches[bid]={restore}; ops.forEach(op=>{ op.batch=bid; op.store=name; outbox.push(op); }); flush(); } } synced[name]=JSON.parse(J(state)); }
       return state;
     },
     clear(){ ls.del(k); },
+    replace(state){ ls.set(k,state); if(isLive(name)) synced[name]=JSON.parse(J(state)); return state; },
     /* live: fetch the server snapshot (same shape as the sample state) and hand it to the app */
     boot(apply){
       if(!isLive(name)) return Promise.resolve(null);
-      return request('GET','/bootstrap/'+name).then(j=>{ const st=j&&j.data; if(st){ synced[name]=JSON.parse(J(st)); ls.set(k,st); apply&&apply(st); emit('boot',{store:name}); } return st; },
+      return request('GET','/bootstrap/'+name).then(j=>whenReady(name).then(()=>j)).then(j=>{ let st=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:j; if(st&&transforms[name]){ try{ st=transforms[name](st); }catch(x){ console.warn('[MFAPI] transform',x); st=null; } } if(st){ synced[name]=JSON.parse(J(st)); ls.set(k,st); apply&&apply(st); emit('boot',{store:name}); } return st; },
         e=>{ emit(e.status===401?'auth':'offline',{store:name,error:String(e),status:e.status}); return null; });
     }
   };
@@ -183,5 +192,5 @@ function strip(name,state){
 const pref={ get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 
 const get=(path)=>request('GET',path);
-window.MFAPI={ setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+window.MFAPI={ setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
 })();
