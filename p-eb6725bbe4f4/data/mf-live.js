@@ -81,13 +81,14 @@ const lo0=ACT.logout; ACT.logout=(a,b,e)=>{ API.request('POST','/auth/logout',{}
 const more1=MF.SCR.more&&MF.SCR.more.render; if(more1) MF.SCR.more.render=c=>more1(c).replace(t('Switch account, language, theme, offline, reset','تبديل الحساب واللغة والمظهر وعدم الاتصال وإعادة الضبط'),t('Account, language, theme','الحساب واللغة والمظهر'));
 
 /* ---------- roles from /v1/me: business_role (customer side) first, then portal_roles (staff), then roles[] ---------- */
-const BIZ={OWNER:'owner',ADMIN:'bm',BUYER:'buyer',FINANCE:'cfin',RECEIVER:'recv',VIEWER:'viewer'};
+/* customer ADMIN is the branch/account manager ('bm'); BRANCH_MANAGER-style values are accepted too if the gateway ever sends them */
+const BIZ={OWNER:'owner',ADMIN:'bm',BRANCH_MANAGER:'bm',MANAGER:'bm',BM:'bm',BUYER:'buyer',FINANCE:'cfin',RECEIVER:'recv',VIEWER:'viewer'};
 const STAFF={ADMIN:'admin',ACCOUNTANT:'acct',SALESPERSON:'sales',SALES_DELIVERY:'van',STOREKEEPER:'store',DELIVERY:'driver'};
 const BIZ_ORDER=['OWNER','ADMIN','FINANCE','BUYER','RECEIVER','VIEWER'], STAFF_ORDER=['ADMIN','ACCOUNTANT','SALESPERSON','SALES_DELIVERY','STOREKEEPER','DELIVERY'];
 const up=v=>String(v==null?'':v).trim().toUpperCase().replace(/[\s-]+/g,'_');
 L.rolesFromMe=me=>{ const out=[]; let seller=false;
   const hasNew=me&&(Object.prototype.hasOwnProperty.call(me,'business_role')||Array.isArray(me.portal_roles));
-  if(hasNew){ const b=up(me.business_role); if(b==='SELLER') seller=true; else if(BIZ[b]) out.push(BIZ[b]); else if(b) out.push('viewer');
+  if(hasNew){ let b=up(me.business_role); if(!b){ const cur=(Array.isArray(me.accounts)?me.accounts:[]).find(x=>x&&x.current); if(cur&&cur.role) b=up(cur.role); }   /* membership role on the current account */ if(b==='SELLER') seller=true; else if(BIZ[b]) out.push(BIZ[b]); else if(b) out.push('viewer');
     const pr=(me.portal_roles||[]).map(up); STAFF_ORDER.forEach(r=>{ if(pr.includes(r)) out.push(STAFF[r]); }); }
   else { const rs=(me&&me.roles||[]).map(up); if(rs.includes('SELLER')) seller=true;
     BIZ_ORDER.forEach(r=>{ if(rs.includes(r)&&!out.includes(BIZ[r])) out.push(BIZ[r]); });          /* ADMIN in roles[] = customer admin, never the staff console */
@@ -303,9 +304,25 @@ L.scr('b.creditnotes',{a:'invoices',r:FINR.join(' '),t:['Credit notes','الإش
      +H.sec('',H.rows([{ic:'doc',tone:'brand',t:t('Statement of account','كشف الحساب'),go:'b.statement'}])); };
 } }
 /* ---------- only screens backed by live data are shown; the rest say so (no sample cast in live mode) ---------- */
-const LIVE_OK=new Set(('doc.view b.payments b.creditnotes b.home b.catalog b.search b.product b.cart b.checkout b.orders b.order b.track b.finance b.invoices b.invoice b.pay b.receipt b.statement b.credit b.hold b.creditApp b.limit b.returns b.lists b.reorder b.par '+COMMON.join(' ')).split(' '));
+const LIVE_OK=new Set(('lv.staff doc.view b.payments b.creditnotes b.home b.catalog b.search b.product b.cart b.checkout b.orders b.order b.track b.finance b.invoices b.invoice b.pay b.receipt b.statement b.credit b.hold b.creditApp b.limit b.returns b.lists b.reorder b.par '+COMMON.join(' ')).split(' '));
 Object.entries(MF.SCR).forEach(([id,d])=>{ if(!d||LIVE_OK.has(id)||/^ob\./.test(id)) return; d.__lvT0=d.t; d.t=()=>t('Not available yet','غير متاح بعد'); d.v=null; d.noSeg=true;
   d.render=c=>H.empty('lock',t('Not available in the preview yet','غير متاح في المعاينة بعد'),t('This screen will show live data once it is switched on.','ستعرض هذه الشاشة بيانات حية عند تفعيلها.'),H.btns(H.btn(t('Help & support','المساعدة والدعم'),{k:'sec',go:'cc.home'}))); d.__lvBlocked=true; });
+/* ---------- navigation: tabs whose screen is not live yet stay visible but disabled ---------- */
+const blocked=id=>{ const d=MF.SCR[id]; return !d||!!d.__lvBlocked; };
+L.post.push(()=>{ document.querySelectorAll('nav.nb a.tab').forEach(a=>{ const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; if(!id||!blocked(id)) return;
+  const sp=document.createElement('span'); sp.className='tab lv-soon-tab'; sp.setAttribute('aria-disabled','true'); sp.innerHTML=a.innerHTML; sp.querySelectorAll('.bdg,.vh').forEach(x=>x.remove());   /* sample counts */
+  const tl=sp.querySelector('.tl'); const tag=`<span class="lv-tag">${t('Coming soon','قريبًا')}</span>`; if(tl) tl.insertAdjacentHTML('afterend',tag); else sp.insertAdjacentHTML('beforeend',tag);
+  a.replaceWith(sp); }); });
+(()=>{ const st=document.createElement('style'); st.textContent='.lv-soon-tab{cursor:default;opacity:.55;position:relative}.lv-soon-tab .lv-tag{display:block;font-size:9.5px;line-height:1.1;font-weight:600;letter-spacing:.01em;padding:1px 5px;border-radius:999px;background:var(--c-surface-2,#eee);color:var(--c-text-2,#555);margin-top:1px;white-space:nowrap}'; document.head.appendChild(st); })();
+/* landing: the role's first live tab; a portal role with no live tab lands on a clear staff home */
+{ const home0=L.home; L.home=role=>{ const R=MF.ROLES[role]; if(!R||!R.nav||!R.nav.length) return home0(role); const ok=R.nav.map(n=>n[1]).find(id=>!blocked(id)&&id!=='more'); return ok||'lv.staff'; }; }
+const STAFF_TOOLS={acct:['Finance tools are coming to the preview soon','أدوات المالية قادمة قريبًا'],sales:['Sales tools are coming to the preview soon','أدوات المبيعات قادمة قريبًا'],van:['Sales and delivery tools are coming to the preview soon','أدوات البيع والتوصيل قادمة قريبًا'],driver:['Delivery tools are coming to the preview soon','أدوات التوصيل قادمة قريبًا'],store:['Warehouse tools are coming to the preview soon','أدوات المستودع قادمة قريبًا'],admin:['Admin tools are coming to the preview soon','أدوات الإدارة قادمة قريبًا'],mgr:['Approval tools are coming to the preview soon','أدوات الاعتماد قادمة قريبًا']};
+L.scr('lv.staff',{a:'home',r:'sales van driver store acct mgr admin',t:['Home','الرئيسية'],noSeg:true,
+  render:c=>{ const R=MF.ROLES[c.role]||{nav:[]}; const h=STAFF_TOOLS[c.role]||['Your tools are coming to the preview soon','أدواتك قادمة قريبًا'];
+    const tools=(R.nav||[]).filter(n=>n[1]!=='more'&&blocked(n[1])).map(n=>`<div class="row lv-soon" aria-disabled="true"><span class="b"><span class="t">${esc(tt(n[2]))}</span></span>${H.pill('neu',t('Coming soon','قريبًا'))}</div>`).join('');
+    return H.sec('',`<div class="card pad lv-empty" role="status"><h2>${t(h[0],h[1])}</h2><p class="why">${t('You are signed in. These screens will show live data once they are switched on for your role.','تم تسجيل دخولك. ستعرض هذه الشاشات بيانات حية عند تفعيلها لدورك.')}</p></div>`,{raw:true})
+     +(tools?H.sec(t('Your tools','أدواتك'),`<div class="card grp">${tools}</div>`,{raw:true}):'')
+     +H.sec('',H.rows([{ic:'more',tone:'brand',t:t('More','المزيد'),s:t('Account, language, theme, sign out','الحساب واللغة والمظهر وتسجيل الخروج'),go:'more'},{ic:'msg',tone:'brand',t:t('Help & support','المساعدة والدعم'),go:'cc.home'}])); }});
 /* More: entries not live yet are plain text (no link, aria-disabled) with a 'Coming soon' tag */
 L.post.push(c=>{ if(!c||c.id!=='more') return; const m=document.querySelector('#main'); if(!m) return;
   m.querySelectorAll('a[href^="#/"]').forEach(a=>{ const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; const d=id&&MF.SCR[id]; if(!d||!d.__lvBlocked) return;
