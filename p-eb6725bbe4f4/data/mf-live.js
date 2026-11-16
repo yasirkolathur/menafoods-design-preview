@@ -100,7 +100,8 @@ MF.ROLES.viewer={n:['Customer · view only','العميل · عرض فقط'],grp
 MF.ROLES.recv={n:['Customer · receiving','العميل · الاستلام'],grp:'customer',ctx:['',''],nav:[['box','b.orders',['Orders','الطلبات']],['truck','b.track',['Track','التتبع']],['user','more',['More','المزيد']]]};
 MF.ROLES.cfin={n:['Customer · finance','العميل · المالية'],grp:'customer',ctx:['',''],nav:[['wallet','b.finance',['Finance','المالية']],['doc','b.invoices',['Invoices','الفواتير']],['box','b.orders',['Orders','الطلبات']],['user','more',['More','المزيد']]]};
 const COMMON='more app.me app.login n.center n.prefs set.prefs set.security set.help cc.home cc.topics cc.article cc.chat'.split(' ');
-const GRANT={viewer:'b.home b.catalog b.search b.product b.orders b.order b.track b.pod b.invoices b.invoice b.statement b.returns',
+/* finance documents (invoices, payments, statements, credit) are for owner, branch manager and customer finance only — s-money.js FIN='owner bm' + cfin */
+const GRANT={viewer:'b.home b.catalog b.search b.product b.orders b.order b.track b.pod b.returns',
   recv:'b.orders b.order b.track b.pod',
   cfin:'b.finance b.invoices b.invoice b.pay b.receipt b.statement b.credit b.hold b.returns b.orders b.order b.track cc.dispute cc.new cc.tickets cc.ticket'};
 Object.entries(GRANT).forEach(([r,ids])=>{ ids.split(' ').concat(COMMON).forEach(id=>{ const d=MF.SCR[id]; if(d&&Array.isArray(d.r)&&!d.r.includes(r)) d.r.push(r); }); });
@@ -174,7 +175,7 @@ L.loadFin=()=>{ const S=L.S(), role=S.session&&S.session.role; if(!role) return;
   const get=(path,key,map,ok)=>{ if(!ok) return Promise.resolve(); L.ui.fin[key]='loading';
     return API.request('GET',path,undefined,{quiet:true}).then(j=>{ const a=listOf(j); if(a){ const S2=L.S(); S2[key]=a.map(map).filter(x=>x&&(x.no||x.id)); L.ui.fin[key]='ok'; if(L.store&&L.store.replace) L.store.replace(S2); } else L.ui.fin[key]='none'; },
       e=>{ L.ui.fin[key]=e&&e.status===401?'auth':'none'; }); };
-  Promise.all([get('/invoices','invoices',nInv,can('b.invoices')||can('b.finance')),get('/payments','payments',nPay,can('b.finance')||can('b.receipt')),get('/credit-notes','cns',nCn,can('b.returns'))]).then(()=>{ if(MF.booted) L.rr(); }); };
+  Promise.all([get('/invoices','invoices',nInv,can('b.invoices')||can('b.finance')||can('doc.view')),get('/payments','payments',nPay,can('b.finance')||can('b.receipt')||can('b.payments')),get('/credit-notes','cns',nCn,can('b.returns')||can('b.creditnotes'))]).then(()=>{ if(MF.booted) L.rr(); }); };
 API.on('boot',()=>setTimeout(L.loadFin,0));
 { const lg=L.login; L.login=r=>{ const x=lg(r); setTimeout(L.loadFin,0); return x; }; }
 { const d=MF.SCR['b.invoices']; if(d){ const r0=d.render; d.render=c=>{ const s=L.S(); if(!(s.invoices||[]).length){ const ld=L.ui.fin.invoices==='loading'; return ld?H.empty('doc',t('Loading invoices…','جارٍ تحميل الفواتير…'),''):H.empty('doc',t('No invoices yet','لا توجد فواتير بعد'),t('Invoices from Zoho Books show here once your account is linked and invoiced.','تظهر هنا فواتير Zoho Books بعد ربط حسابك وإصدار الفواتير.')); } return r0(c); }; } }
@@ -274,10 +275,49 @@ L.def('b.product',{t:()=>{ const p=RAW[qp('sku')]; return p?(MF.pn?MF.pn(p):p.en
   const det=[[t('Minimum order','الحد الأدنى للطلب'),N(p.moq||1)]]; if(p.storage) det.push([t('Storage','التخزين'),esc(tt(Array.isArray(p.storage)?p.storage:[p.storage,p.storage]))]); h+=H.sec(t('Details','التفاصيل'),H.kv(det));
   const view=['viewer','recv'].includes(c.role);
   return (p.stock==='out'||view)?h:{b:h,dock:`<div class="dt"><small>${q?t(`${q} in cart`,`${q} في السلة`):t('excl. VAT','قبل الضريبة')}</small>${M(p.pr==null?null:p.pr*Math.max(q,1))}</div>${H.stepper(id,q,MF.pn?MF.pn(p):p.en)}`}; }});
+/* ---------- finance documents hub (doc.view) + payments and credit-note lists — owner, branch manager, customer finance ---------- */
+const FINR=['owner','bm','cfin'];
+const dshort=ts=>ts?dt(ts,{day:'numeric',month:'short',year:'numeric'}):'—';
+const payRow=p=>({ic:'wallet',tone:'ok',t:`${LTR(esc(p.id))} · ${M(p.amt)}`,s:`${dshort(p.ts)} · ${payLabel(p.m)}`,go:'b.receipt',q:{id:p.id}});
+const cnRow=cn=>({ic:'receipt',tone:'ok',t:t('Credit note','إشعار دائن')+' '+LTR(esc(cn.no||'—')),s:`${esc(tt(cn.why))}${cn.inv?' · '+t('on','على')+' '+LTR(esc(cn.inv)):''}${cn.ts?' · '+dshort(cn.ts):''}`,end:M(cn.amt==null?null:-cn.amt),go:cn.inv&&L.S().invoices.some(i=>i.no===cn.inv)?'b.invoice':null,q:cn.inv?{no:cn.inv}:null});
+const finState=k=>(L.ui.fin||{})[k]==='loading';
+const listOrEmpty=(rows,key,ic,en,ar,sub)=>rows.length?H.rows(rows):finState(key)?H.empty(ic,t('Loading…','جارٍ التحميل…'),''):H.empty(ic,t(en,ar),sub);
+const BOOKS_SUB=()=>t('Documents from Zoho Books show here once your account is linked.','تظهر هنا مستندات Zoho Books بعد ربط حسابك.');
+L.scr('b.payments',{a:'invoices',r:FINR.join(' '),t:['Payments','المدفوعات'],back:'doc.view',noSeg:true,
+  render:()=>{ const P=(L.S().payments||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0)); return H.sec('',listOrEmpty(P.map(payRow),'payments','wallet','No payments yet','لا توجد مدفوعات بعد',BOOKS_SUB())); }});
+L.scr('b.creditnotes',{a:'invoices',r:FINR.join(' '),t:['Credit notes','الإشعارات الدائنة'],back:'doc.view',noSeg:true,
+  render:()=>{ const C=(L.S().cns||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0)); return H.sec('',listOrEmpty(C.map(cnRow),'cns','receipt','No credit notes yet','لا توجد إشعارات دائنة بعد',BOOKS_SUB())); }});
+{ const dv=MF.SCR['doc.view']; if(dv){ dv.r=FINR.slice(); dv.noSeg=true; dv.v=null; dv.acts=null;
+  dv.t=()=>t('Invoices & payments','الفواتير والمدفوعات');
+  try{ Object.defineProperty(dv,'back',{value:'more',writable:true,configurable:true}); }catch(e){ dv.back='more'; }
+  dv.render=c=>{ const k=qp('k'), id=qp('id');
+    /* a single document opens its live screen; PDFs are not enabled in the preview yet */
+    const rep=(to,q)=>{ setTimeout(()=>location.replace(MF.href(to,q||{})),0); return H.empty('doc',t('Opening…','جارٍ الفتح…'),''); };   /* replace: Back does not loop */
+    if(id&&k==='receipt') return rep('b.receipt',{id,k:null,back:null});
+    if(id&&(!k||k==='invoice')) return rep('b.invoice',{no:id,id:null,k:null,back:null});
+    if(k==='statement') return rep('b.statement',{k:null,id:null,back:null});
+    const s=L.S(); const inv=(s.invoices||[]).slice().sort((a,b)=>(b.d||0)-(a.d||0)), pay=(s.payments||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0)), cns=(s.cns||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
+    return H.sec(t('Invoices','الفواتير'),listOrEmpty(inv.slice(0,5).map(L.invRow),'invoices','doc','No invoices yet','لا توجد فواتير بعد',BOOKS_SUB()),{act:inv.length?[t('All invoices','كل الفواتير'),'b.invoices']:null})
+     +H.sec(t('Payments','المدفوعات'),listOrEmpty(pay.slice(0,5).map(payRow),'payments','wallet','No payments yet','لا توجد مدفوعات بعد',''),{act:pay.length?[t('All payments','كل المدفوعات'),'b.payments']:null})
+     +H.sec(t('Credit notes','الإشعارات الدائنة'),listOrEmpty(cns.slice(0,5).map(cnRow),'cns','receipt','No credit notes yet','لا توجد إشعارات دائنة بعد',''),{act:cns.length?[t('All credit notes','كل الإشعارات الدائنة'),'b.creditnotes']:null})
+     +H.sec('',H.rows([{ic:'doc',tone:'brand',t:t('Statement of account','كشف الحساب'),go:'b.statement'}])); };
+} }
 /* ---------- only screens backed by live data are shown; the rest say so (no sample cast in live mode) ---------- */
-const LIVE_OK=new Set(('b.home b.catalog b.search b.product b.cart b.checkout b.orders b.order b.track b.finance b.invoices b.invoice b.pay b.receipt b.statement b.credit b.hold b.creditApp b.limit b.returns b.lists b.reorder b.par '+COMMON.join(' ')).split(' '));
-Object.entries(MF.SCR).forEach(([id,d])=>{ if(!d||LIVE_OK.has(id)||/^ob\./.test(id)) return; d.t=()=>t('Not available yet','غير متاح بعد'); d.v=null; d.noSeg=true;
+const LIVE_OK=new Set(('doc.view b.payments b.creditnotes b.home b.catalog b.search b.product b.cart b.checkout b.orders b.order b.track b.finance b.invoices b.invoice b.pay b.receipt b.statement b.credit b.hold b.creditApp b.limit b.returns b.lists b.reorder b.par '+COMMON.join(' ')).split(' '));
+Object.entries(MF.SCR).forEach(([id,d])=>{ if(!d||LIVE_OK.has(id)||/^ob\./.test(id)) return; d.__lvT0=d.t; d.t=()=>t('Not available yet','غير متاح بعد'); d.v=null; d.noSeg=true;
   d.render=c=>H.empty('lock',t('Not available in the preview yet','غير متاح في المعاينة بعد'),t('This screen will show live data once it is switched on.','ستعرض هذه الشاشة بيانات حية عند تفعيلها.'),H.btns(H.btn(t('Help & support','المساعدة والدعم'),{k:'sec',go:'cc.home'}))); d.__lvBlocked=true; });
+/* More: entries not live yet are plain text (no link, aria-disabled) with a 'Coming soon' tag */
+L.post.push(c=>{ if(!c||c.id!=='more') return; const m=document.querySelector('#main'); if(!m) return;
+  m.querySelectorAll('a[href^="#/"]').forEach(a=>{ const id=(a.getAttribute('href').match(/^#\/([^?]+)/)||[])[1]; const d=id&&MF.SCR[id]; if(!d||!d.__lvBlocked) return;
+    const t0=d.__lvT0; const nm=typeof t0==='function'?(()=>{ try{ return t0(c); }catch(e){ return ''; } })():Array.isArray(t0)?tt(t0):(t0||'');
+    const row=document.createElement('div'); row.className=(a.className||'row')+' lv-soon'; row.setAttribute('aria-disabled','true');
+    /* record-specific titles (a sample customer, order or request) are not menu entries: drop them */
+    if(typeof t0==='function'||!nm||/#\s*\d{3,}/.test(nm)){ a.remove(); return; }
+    const nm2=String(nm||'').replace(/\s*\u200e?#\s*\d{3,}\b/g,'').trim(); /* sample record numbers in prototype titles */
+    row.innerHTML=`<span class="b"><span class="t">${esc(nm2||t('Not available yet','غير متاح بعد'))}</span></span>${H.pill('neu',t('Coming soon','قريبًا'))}`;
+    a.replaceWith(row); });
+  m.querySelectorAll('section.sec').forEach(sec=>{ if(!sec.querySelector('.row,a,button,input')&&!sec.querySelector('.acct')) sec.remove(); }); });
+(()=>{ const st=document.createElement('style'); st.textContent='.lv-soon{cursor:default;color:var(--c-text-2)}.lv-soon .t{color:var(--c-text-2)}'; document.head.appendChild(st); })();
 /* pro-ops status strip: real catalogue status instead of the sample "Synced 10:42 · Zoho Books · OK · SAMPLE" */
 const after0=MF.after; if(after0) MF.after=C=>{ after0(C); document.querySelectorAll('#main .fm-hero').forEach(x=>x.remove()); /* fresh-market promo banner is sample copy */ const s=document.querySelector('#main .ops'); if(!s) return; const n=API.catalogCount; s.innerHTML=n?`<span><i aria-hidden="true"></i>${t('Live','حي')}</span><span>${t('Zoho Commerce','زوهو كومرس')} · ${N(n)} ${t('items','صنف')}</span><span>${dt(Date.now(),{weekday:'short',day:'numeric',month:'short'})}</span>`:''; if(!n) s.remove(); };
 
