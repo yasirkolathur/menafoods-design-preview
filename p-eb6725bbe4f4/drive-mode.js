@@ -29,6 +29,10 @@ const FW=(()=>{ if(window.MF&&typeof window.MF.S==='function') return 'mf';
   try{ if(typeof SCREENS!=='undefined') return 'c'; }catch(e){}
   return ''; })();
 if(!FW) return;
+/* which design direction is hosting us: each gets its own Mobbin-referenced treatment (see THEME CSS below) */
+const THEME=(()=>{ const p=location.pathname; return /theme-souq-modern/.test(p)?'souq':/theme-pro-ops/.test(p)?'pro':/theme-fresh-market/.test(p)?'fresh':/direction-b/.test(p)?'b':/direction-c/.test(p)?'c':'v3'; })();
+const markTheme=()=>{ if(document.documentElement.getAttribute('data-dm')!==THEME) document.documentElement.setAttribute('data-dm',THEME); };
+markTheme();
 const gS=()=>{ try{ return S; }catch(e){ return null; } };   /* Direction B / C global state */
 function ctx(){
   if(FW==='mf'){ const c=window.MF.C||{}; const R=(window.MF.ROLES||{})[c.role]||{}; return {lang:c.lang||(document.documentElement.lang==='ar'?'ar':'en'),plat:c.plat||'pwa',role:c.role||'',grp:R.grp||'customer',id:c.id||'',guest:!c.role||c.role==='guest'||/^ob\.|^app\.login/.test(c.id||'')}; }
@@ -79,7 +83,7 @@ function modeLabel(m){ return {off:T('Off','إيقاف'),on:T('On','تشغيل')
 function setMode(m){ P.mode=m; if(m!=='auto'){ SS={conn:false,driving:false,trip:'',dismissed:false}; ssave(); } if(m==='off') UI.open=false; save(); window.dispatchEvent(new CustomEvent('mf:drive-pref',{detail:{mode:m}})); }
 
 /* ---------- icons ---------- */
-const PATH={mic:'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21',car:'M4 16.5h16M6.5 16.5V19M17.5 16.5V19M4 16.5v-4L6.2 7.5h11.6L20 12.5v4M7.5 13.2h.01M16.5 13.2h.01M4.5 12.5h15',bt:'M7 7.5l10 9-5 4.5V3l5 4.5-10 9',shield:'M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z',x:'M6 6l12 12M18 6L6 18',pin:'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',gear:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',lock:'M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',speed:'M5 17a8 8 0 1 1 14 0M12 13l4-4'};
+const PATH={mic:'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21',car:'M4 16.5h16M6.5 16.5V19M17.5 16.5V19M4 16.5v-4L6.2 7.5h11.6L20 12.5v4M7.5 13.2h.01M16.5 13.2h.01M4.5 12.5h15',bt:'M7 7.5l10 9-5 4.5V3l5 4.5-10 9',shield:'M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z',x:'M6 6l12 12M18 6L6 18',pin:'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',gear:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',lock:'M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',speed:'M5 17a8 8 0 1 1 14 0M12 13l4-4',off:'M12 3v8M7.1 6.3a7 7 0 1 0 9.8 0',check:'M5 12.5l4.5 4.5L19 7.5'};
 const svg=(n,s=20,cls='')=>`<svg class="mfdm-ic ${cls}" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${PATH[n]}"/></svg>`;
 
 /* ---------- styles (theme tokens with fallbacks for B / C) ---------- */
@@ -148,7 +152,112 @@ const css=`:root{--dm-brand:var(--c-brand,var(--primary,var(--brand,#0A6B4F)));-
 .mfdm-row input:disabled{cursor:not-allowed}
 .mfdm-note{display:flex;gap:8px;font-size:13px;line-height:1.5;color:var(--dm-text2);margin:0 4px}
 .mfdm-seg{display:flex;gap:6px;flex-wrap:wrap}.mfdm-seg button{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--dm-line);background:var(--dm-surface);color:var(--dm-text);font:500 13px inherit;font-family:inherit;cursor:pointer}.mfdm-seg button[aria-pressed="true"]{background:var(--dm-text);color:var(--dm-surface)}
-.mfdm-vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}`;
+.mfdm-vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* ===== per-theme treatments (Mobbin references in research/drive-mode-spec.md §9) ===== */
+/* shared: mode picker variants */
+.mfdm-pick{display:flex;gap:8px}
+.mfdm-opt{position:relative;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--dm-text);-webkit-tap-highlight-color:transparent}
+.mfdm-opt input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.mfdm-opt:has(input:focus-visible){outline:3px solid var(--c-focus,#1D5AA6);outline-offset:2px}
+.mfdm-ot{font-weight:600}
+.mfdm-pd{margin-top:12px;font-size:14px;line-height:1.55;color:var(--dm-text2)}.mfdm-pd b{color:var(--dm-text);font-size:15px}.mfdm-pd p{margin:4px 0 0}
+.mfdm-oi{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;flex:none;background:var(--dm-s2);color:var(--dm-text2)}
+.mfdm-ocheck{display:none}
+/* — Calm Commerce v3 (Instacart · sweetgreen · HelloFresh · Uber Eats): calm list radios, soft green info bar, side drawer on wide screens — */
+[data-dm=v3] .mfdm-banner{background:var(--dm-weak);border:0;border-radius:14px;box-shadow:0 6px 20px rgba(20,22,19,.12)}
+[data-dm=v3] .mfdm-banner .mfdm-lead{background:var(--dm-surface)}
+[data-dm=v3] .mfdm-banner.inline{box-shadow:none}
+@media (min-width:900px){[data-dm=v3] .mfdm-sheet{left:auto;right:0;top:0;bottom:0;transform:none;width:420px;max-height:none;height:100%;border-radius:0;padding-top:16px;animation:mfdmSide .28s cubic-bezier(.05,.7,.1,1)}[data-dm=v3] .mfdm-sheet[dir=rtl]{right:auto;left:0;animation-name:mfdmSideR}[data-dm=v3] .mfdm-sheet .mfdm-grab{display:none}}
+@keyframes mfdmSide{from{transform:translateX(40px);opacity:.3}to{transform:none;opacity:1}}@keyframes mfdmSideR{from{transform:translateX(-40px);opacity:.3}to{transform:none;opacity:1}}
+/* — Souq Modern (Vestiaire Collective · Blue Apron · ZARA · Co–Star): editorial caps labels, outlined square chips, stamped cards — */
+[data-dm=souq] .mfdm-pill{border-radius:4px;background:var(--dm-surface);color:var(--dm-brand-text);border:1.5px solid var(--dm-brand);box-shadow:none;text-transform:uppercase;letter-spacing:.08em;font-size:12px;min-height:34px}
+[data-dm=souq][lang=ar] .mfdm-pill,[data-dm=souq] .mfdm-pill[dir=rtl]{text-transform:none;letter-spacing:0;font-size:13px}
+[data-dm=souq] .mfdm-pill .mfdm-dot{border-radius:1px;transform:rotate(45deg);width:7px;height:7px;background:var(--c-accent,#C9962B);animation:none}
+[data-dm=souq] .mfdm-s .sec-h h2{text-transform:uppercase;letter-spacing:.12em;font-size:12.5px;color:var(--dm-text2);font-family:"Inter",sans-serif;font-weight:700}
+[data-dm=souq][lang=ar] .mfdm-s .sec-h h2{text-transform:none;letter-spacing:0;font-size:14px;font-family:"IBM Plex Sans Arabic",sans-serif}
+[data-dm=souq] .mfdm-pick{gap:0;border:1px solid var(--dm-text);border-radius:4px;overflow:hidden}
+[data-dm=souq] .mfdm-opt{flex:1;min-height:48px;border-inline-end:1px solid var(--dm-text);font-size:14px;text-transform:uppercase;letter-spacing:.06em;background:var(--dm-surface)}
+[data-dm=souq][lang=ar] .mfdm-opt{text-transform:none;letter-spacing:0;font-size:15px}
+[data-dm=souq] .mfdm-opt:last-child{border-inline-end:0}
+[data-dm=souq] .mfdm-opt.on{background:var(--dm-text);color:var(--dm-surface)}
+[data-dm=souq] .mfdm-pd{border-top:1px solid var(--dm-line);padding-top:12px}
+[data-dm=souq] .mfdm-herocard{border-top:3px solid var(--c-accent,#C9962B)}
+[data-dm=souq] .mfdm-hero h2,[data-dm=souq] .mfdm-sh-h h2{font-family:"Reem Kufi","IBM Plex Sans Arabic",sans-serif;font-weight:600}
+[data-dm=souq] .mfdm-lead{border-radius:22px 22px 6px 6px}
+[data-dm=souq] .mfdm-sheet{border-radius:10px 10px 0 0;border-top:3px solid var(--dm-brand)}
+[data-dm=souq] .mfdm-btn,[data-dm=souq] .mfdm-chip,[data-dm=souq] .mfdm-plat button,[data-dm=souq] .mfdm-x{border-radius:6px}
+[data-dm=souq] .mfdm-qa,[data-dm=souq] .mfdm-confirm{border-radius:6px}
+[data-dm=souq] .mfdm-banner{border-radius:8px;border:1px solid var(--dm-line);border-top:3px solid var(--dm-brand);box-shadow:0 10px 28px rgba(60,30,10,.16)}
+[data-dm=souq] .mfdm-tag{border-radius:3px}
+/* — Pro Ops (Copilot · WHOOP · Google Health/Fitbit · Phantom · Lloyds): segmented control, mono status chip, dense dark cards — */
+[data-dm=pro] .mfdm-pill{border-radius:3px;background:transparent;color:var(--dm-brand);border:1px solid var(--dm-brand);box-shadow:none;min-height:30px;padding:0 8px;font-family:"IBM Plex Mono","IBM Plex Sans Arabic",monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+[data-dm=pro] .mfdm-pill[dir=rtl]{text-transform:none;letter-spacing:0;font-family:"IBM Plex Sans Arabic",sans-serif;font-size:12.5px}
+[data-dm=pro] .mfdm-pill .mfdm-ic{width:14px;height:14px}
+[data-dm=pro] .mfdm-pill .mfdm-dot{width:7px;height:7px;background:var(--dm-brand);animation:mfdmBlink 1.6s steps(2) infinite;box-shadow:none}
+@keyframes mfdmBlink{50%{opacity:.25}}
+[data-dm=pro] .mfdm-pick{background:var(--dm-s2);border:1px solid var(--dm-line);border-radius:6px;padding:3px;gap:3px}
+[data-dm=pro] .mfdm-opt{flex:1;min-height:40px;border-radius:4px;font-size:13.5px;color:var(--dm-text2)}
+[data-dm=pro] .mfdm-opt.on{background:var(--dm-brand);color:var(--dm-on-brand)}
+[data-dm=pro] .mfdm-pd{font-size:13.5px;border-inline-start:2px solid var(--dm-brand);padding-inline-start:10px}
+[data-dm=pro] .mfdm-sheet{border-radius:8px 8px 0 0;border:1px solid var(--dm-line);border-bottom:0;padding-inline:16px}
+[data-dm=pro] .mfdm-sh-h h2{font-family:"Plex Condensed","IBM Plex Sans Arabic",sans-serif;font-size:18px}
+[data-dm=pro] .mfdm-mic{width:76px;height:76px;border-radius:10px;box-shadow:none}
+[data-dm=pro] .mfdm-mic.on::after{border-radius:14px}
+[data-dm=pro] .mfdm-qa{border-radius:4px;border-inline-start:3px solid var(--dm-brand);background:var(--dm-s2)}
+[data-dm=pro] .mfdm-btn,[data-dm=pro] .mfdm-chip,[data-dm=pro] .mfdm-plat button,[data-dm=pro] .mfdm-x{border-radius:4px}
+[data-dm=pro] .mfdm-chip{min-height:36px;font-size:13px}
+[data-dm=pro] .mfdm-lead{border-radius:6px}
+[data-dm=pro] .mfdm-tag{border-radius:3px;background:transparent;border:1px solid currentColor;font-family:"IBM Plex Mono","IBM Plex Sans Arabic",monospace;font-size:11px}
+[data-dm=pro] .mfdm-banner{border-radius:10px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.45)}
+[data-dm=pro] .mfdm-banner:not(.inline) .mfdm-acts{flex-direction:column}
+[data-dm=pro] .mfdm-banner .mfdm-btn{flex:1 1 auto;width:100%}
+[data-dm=pro] .mfdm-confirm{border-radius:4px}
+/* — Fresh Market (Fiverr · Mindtrip · Wolt · Blinkit · Swiggy · talabat): selectable photo-style cards, soft tinted chips, pillowy sheets — */
+[data-dm=fresh] .mfdm-pill{background:var(--dm-weak);color:var(--dm-brand-text);box-shadow:0 2px 8px rgba(30,60,20,.12);min-height:38px;padding:0 14px 0 4px;font-family:"Baloo Bhaijaan 2","IBM Plex Sans Arabic",sans-serif;font-size:14px;font-weight:700}
+[data-dm=fresh] .mfdm-pill[dir=rtl]{padding:0 4px 0 14px}
+[data-dm=fresh] .mfdm-pill .mfdm-ic{width:30px;height:30px;padding:6px;border-radius:999px;background:var(--dm-brand);color:var(--dm-on-brand);box-sizing:border-box}
+[data-dm=fresh] .mfdm-pill .mfdm-dot{display:none}
+[data-dm=fresh] .mfdm-pick{flex-direction:column;gap:10px}
+[data-dm=fresh] .mfdm-opt{justify-content:flex-start;text-align:start;gap:12px;min-height:76px;padding:12px 14px;border-radius:20px;background:var(--dm-surface);border:2px solid var(--dm-line);box-shadow:0 2px 10px rgba(30,60,20,.06)}
+[data-dm=fresh] .mfdm-opt.on{border-color:var(--dm-brand);background:var(--dm-weak)}
+[data-dm=fresh] .mfdm-opt .mfdm-ob{display:block;flex:1;min-width:0}
+[data-dm=fresh] .mfdm-opt .mfdm-ot{display:block;font-family:"Baloo Bhaijaan 2","IBM Plex Sans Arabic",sans-serif;font-size:17px;font-weight:700}
+[data-dm=fresh] .mfdm-opt .mfdm-os{display:block;font-size:13px;line-height:1.45;color:var(--dm-text2);font-weight:400;margin-top:2px}
+[data-dm=fresh] .mfdm-opt .mfdm-oe{display:block;margin-top:6px}
+[data-dm=fresh] .mfdm-opt[data-v=on] .mfdm-oi{background:var(--dm-brand);color:var(--dm-on-brand)}
+[data-dm=fresh] .mfdm-opt[data-v=auto] .mfdm-oi{background:var(--c-accent-weak,#FFF1C2);color:var(--c-accent-text,#7A5200)}
+[data-dm=fresh] .mfdm-ocheck{display:grid;place-items:center;width:26px;height:26px;border-radius:999px;border:2px solid var(--dm-line);flex:none;color:transparent}
+[data-dm=fresh] .mfdm-opt.on .mfdm-ocheck{background:var(--dm-brand);border-color:var(--dm-brand);color:var(--dm-on-brand)}
+[data-dm=fresh] .mfdm-sheet{border-radius:28px 28px 0 0}
+[data-dm=fresh] .mfdm-sh-h h2,[data-dm=fresh] .mfdm-hero h2,[data-dm=fresh] .mfdm-bh b{font-family:"Baloo Bhaijaan 2","IBM Plex Sans Arabic",sans-serif;font-weight:700}
+[data-dm=fresh] .mfdm-mic{width:96px;height:96px;box-shadow:0 0 0 10px var(--dm-weak),0 10px 26px rgba(30,90,40,.25)}
+[data-dm=fresh] .mfdm-qa{border-radius:20px}
+[data-dm=fresh] .mfdm-chip{min-height:44px;background:var(--dm-weak);border-color:transparent;color:var(--dm-brand-text);font-weight:600}
+[data-dm=fresh] .mfdm-lead{border-radius:999px;background:var(--c-accent-weak,#FFF1C2);color:var(--c-accent-text,#7A5200)}
+[data-dm=fresh] .mfdm-banner{border-radius:24px;border:0;padding:16px;box-shadow:0 14px 36px rgba(30,60,20,.2)}
+[data-dm=fresh] .mfdm-btn{min-height:52px;font-weight:700}
+[data-dm=fresh] .mfdm-btn.sec{background:var(--dm-weak);border-color:transparent;color:var(--dm-brand-text)}
+[data-dm=fresh] .mfdm-tag{padding:3px 10px}
+/* — Direction B (Najd warmth): henna hero card, soft shadow cards, henna radios — */
+[data-dm=b] .mfdm-card{border:0;border-radius:var(--r-lg,20px);box-shadow:var(--shadow,0 2px 10px rgba(60,30,10,.08))}
+[data-dm=b] .mfdm-herocard{background:linear-gradient(160deg,var(--henna-500,#B5502A),#C8693A 60%,var(--saffron-500,#E8A33D));color:#fff}
+[data-dm=b] .mfdm-herocard .mfdm-hero p{color:rgba(255,255,255,.88)}[data-dm=b] .mfdm-herocard .mfdm-lead{background:rgba(255,255,255,.2);color:#fff}
+[data-dm=b] .mfdm-pill{background:linear-gradient(135deg,var(--henna-500,#B5502A),var(--saffron-500,#E8A33D))}
+[data-dm=b] .mfdm-pill .mfdm-dot{background:#fff;animation:none}
+[data-dm=b] .mfdm-sheet{border-radius:var(--r-xl,28px) var(--r-xl,28px) 0 0}
+[data-dm=b] .mfdm-lead{background:var(--henna-50,#FBF1EA);color:var(--henna-600,#9A4020)}
+[data-dm=b] .mfdm-banner{border:0;border-radius:var(--r-lg,20px);border-inline-start:4px solid var(--saffron-500,#E8A33D)}
+/* — Direction C (role hubs + status system): action tiles picker, status-chip pill, status-striped banner — */
+[data-dm=c] .mfdm-pick.k-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+[data-dm=c] .mfdm-opt{flex-direction:column;min-height:88px;padding:12px 6px;border-radius:var(--r,12px);background:var(--card,#fff);border:1px solid var(--line,#DEDAD0);font-size:13.5px}
+[data-dm=c] .mfdm-opt .mfdm-oi{width:36px;height:36px;background:transparent;color:var(--brand,#0B6E69)}
+[data-dm=c] .mfdm-opt.on{border:2px solid var(--brand,#0B6E69);background:var(--brand-50,#E6F3F2)}
+[data-dm=c] .mfdm-pill{background:var(--s-ok-bg,#DDF5E5);color:var(--s-ok,#157F3B);box-shadow:none;min-height:30px;font-size:12.5px;padding:0 10px 0 8px}
+[data-dm=c] .mfdm-pill .mfdm-dot{background:var(--s-ok,#157F3B);animation:none}
+[data-dm=c] .mfdm-card{border-radius:var(--r,12px)}
+[data-dm=c] .mfdm-banner{border-radius:var(--r,12px);border-inline-start:4px solid var(--s-prog,#1D5AA6)}
+[data-dm=c] .mfdm-btn{border-radius:var(--r-sm,8px)}
+`;
 function addCss(){ if(document.getElementById('mfdmCss')) return; const st=document.createElement('style'); st.id='mfdmCss'; st.textContent=css; (document.head||document.documentElement).appendChild(st); }
 
 /* ---------- sample voice answers (role-aware) ---------- */
@@ -197,7 +306,7 @@ function headerSlot(){
 }
 const dirOf=el=>{ if(!el||!el.setAttribute) return; const ar=ctx().lang==='ar'; el.setAttribute('dir',ar?'rtl':'ltr'); el.setAttribute('lang',ar?'ar':'en'); };
 let busy=false;
-function ensure(){
+function ensure(){ markTheme();
   if(busy) return; busy=true;
   try{
     addCss();
@@ -286,6 +395,14 @@ function viewHTML(v){
 }
 
 /* ---- MF runtime renderer (4 working themes) ---- */
+/* mode picker in each theme's own idiom: v3/B = list radios, Souq = outlined square segment, Pro Ops = segmented control, Fresh = selectable cards, C = action tiles */
+const PICK={souq:'chips',pro:'seg',fresh:'cards',c:'tiles'}[THEME]||'';
+function pickHTML(sec){ const k=PICK, MI={off:'off',on:'mic',auto:'car'};
+  const opts=sec.rows.map(r=>{ const id='mfdmp-'+r.v, on=P.mode===r.v;
+    return `<label class="mfdm-opt${on?' on':''}" data-v="${r.v}" for="${id}"><input type="radio" name="mfdrv" id="${id}" value="${r.v}"${on?' checked':''}${k==='cards'?'':` aria-describedby="mfdmPd"`}>${k==='cards'||k==='tiles'?`<span class="mfdm-oi">${svg(MI[r.v],22)}</span>`:''}${k==='cards'?`<span class="mfdm-ob"><span class="mfdm-ot">${esc(r.t)}</span><span class="mfdm-os">${esc(r.s)}</span>${r.end?`<span class="mfdm-oe">${r.end}</span>`:''}</span><span class="mfdm-ocheck">${svg('check',16)}</span>`:`<span class="mfdm-ot">${esc(r.t)}</span>`}</label>`; }).join('');
+  const cur=sec.rows.find(r=>r.v===P.mode)||sec.rows[0];
+  return `<div class="mfdm-pick k-${k}">${opts}</div>${k==='cards'?'':`<div class="mfdm-pd" id="mfdmPd" aria-live="polite"><b>${esc(cur.t)}</b>${cur.end?' '+cur.end:''}<p>${esc(cur.s)}</p></div>`}`; }
+
 function mfRows(rows){ return rows.map(r=>{
   const id='mfdm-'+(r.key||r.v||r.t).toString().replace(/\W/g,'');
   const sub=r.s?`<span class="s">${esc(r.s)}</span>`:'';
@@ -296,11 +413,14 @@ function mfRows(rows){ return rows.map(r=>{
 function mfRender(c){
   const MF=window.MF, H=MF.H; UI.view=c.v||'set';
   const vv=viewHTML(UI.view);
-  if(vv) return vv.map(([h,b])=>H.sec(esc(h),`<div class="card pad">${b}</div>`,{raw:true})).join('');
-  let h=H.sec('',`<div class="card pad">${heroHTML()}</div>`,{raw:true});
-  model().forEach(sec=>{ if(sec.perm){ h+=H.sec('',permHTML(sec.perm),{raw:true}); return; } h+=H.sec(esc(sec.title),`<div class="card grp">${mfRows(sec.rows)}</div>${sec.note?H.note(esc(sec.note),'info'):''}`,{raw:true}); });
-  const tr=tryHTML(); if(tr) h+=H.sec(esc(T('Try it','جرّبه')),tr,{raw:true});
-  h+=H.sec(esc(T('Preview platform','منصة المعاينة')),platHTML(),{raw:true});
+  const o={raw:true,cls:'mfdm-s'};
+  if(vv) return vv.map(([h,b])=>H.sec(esc(h),`<div class="card pad">${b}</div>`,o)).join('');
+  let h=H.sec('',`<div class="card pad mfdm-herocard">${heroHTML()}</div>`,o);
+  model().forEach((sec,i)=>{ if(sec.perm){ h+=H.sec('',permHTML(sec.perm),o); return; }
+    const body=i===0&&PICK?(PICK==='seg'?`<div class="card pad">${pickHTML(sec)}</div>`:pickHTML(sec)):`<div class="card grp">${mfRows(sec.rows)}</div>`;
+    h+=H.sec(esc(sec.title),`<fieldset style="border:0;padding:0;margin:0;min-width:0"><legend class="mfdm-vh">${esc(sec.title)}</legend>${body}</fieldset>${sec.note?H.note(esc(sec.note),'info'):''}`,o); });
+  const tr=tryHTML(); if(tr) h+=H.sec(esc(T('Try it','جرّبه')),tr,o);
+  h+=H.sec(esc(T('Preview platform','منصة المعاينة')),platHTML(),o);
   h+=H.note(esc(safeTxt()),'shield')+H.note(esc(deviceTxt()),'lock');
   return h;
 }
@@ -316,8 +436,8 @@ function genericHTML(){
   const seg=`<div class="mfdm-seg" role="group" aria-label="${esc(T('Prototype view','عرض النموذج'))}">${VIEWS().map(([v,l])=>`<button type="button" data-drv="view" data-v="${v}" aria-pressed="${UI.view===v}">${esc(l)}</button>`).join('')}</div>`;
   const vv=viewHTML(UI.view);
   if(vv) return `<div class="mfdm-g" dir="${ctx().lang==='ar'?'rtl':'ltr'}">${seg}${vv.map(([h,b])=>`<section><h3>${esc(h)}</h3><div class="mfdm-card pad">${b}</div></section>`).join('')}</div>`;
-  let h=`<div class="mfdm-g" dir="${ctx().lang==='ar'?'rtl':'ltr'}">${seg}<div class="mfdm-card pad">${heroHTML()}</div>`;
-  model().forEach(sec=>{ if(sec.perm){ h+=permHTML(sec.perm); return; } h+=`<section><h3>${esc(sec.title)}</h3><fieldset style="border:0;padding:0;margin:0"><legend class="mfdm-vh">${esc(sec.title)}</legend><div class="mfdm-card">${gRows(sec.rows)}</div></fieldset>${sec.note?`<p class="mfdm-note" style="margin-top:8px">${esc(sec.note)}</p>`:''}</section>`; });
+  let h=`<div class="mfdm-g" dir="${ctx().lang==='ar'?'rtl':'ltr'}">${seg}<div class="mfdm-card pad mfdm-herocard">${heroHTML()}</div>`;
+  model().forEach((sec,i)=>{ if(sec.perm){ h+=permHTML(sec.perm); return; } h+=`<section><h3>${esc(sec.title)}</h3><fieldset style="border:0;padding:0;margin:0;min-width:0"><legend class="mfdm-vh">${esc(sec.title)}</legend>${i===0&&PICK?pickHTML(sec):`<div class="mfdm-card">${gRows(sec.rows)}</div>`}</fieldset>${sec.note?`<p class="mfdm-note" style="margin-top:8px">${esc(sec.note)}</p>`:''}</section>`; });
   const tr=tryHTML(); if(tr) h+=`<section><h3>${esc(T('Try it','جرّبه'))}</h3>${tr}</section>`;
   h+=`<section><h3>${esc(T('Preview platform','منصة المعاينة'))}</h3>${platHTML()}</section>`;
   h+=`<p class="mfdm-note">${svg('shield',18)}<span>${esc(safeTxt())}</span></p><p class="mfdm-note">${svg('lock',18)}<span>${esc(deviceTxt())}</span></p></div>`;
