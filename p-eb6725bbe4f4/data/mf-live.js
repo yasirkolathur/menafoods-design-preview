@@ -145,24 +145,25 @@ const pickFor=(r,av,me)=>{ if(!r) return null; if(isAlias(r)){ const last=sideGe
 const canOpen=(id,r)=>{ const d=id&&MF.SCR[id]; return !!(d&&Array.isArray(d.r)&&d.r.includes(r)); };
 const parseHash=()=>{ const h=location.hash.replace(/^#\/?/,''), i=h.indexOf('?'); return {id:i<0?h:h.slice(0,i), q:new URLSearchParams(i<0?'':h.slice(i+1))}; };
 /* on load: the query form (app.html?role=staff#/b.home) is moved into the hash; the request is kept until /me answers */
-(()=>{ const sp=new URLSearchParams(location.search), qr=sp.get('role'), H=parseHash(), r=H.q.get('role')||qr;
-  if(qr){ sp.delete('role'); if(!H.q.get('role')) H.q.set('role',qr); const s=sp.toString(); history.replaceState(history.state,'',location.pathname+(s?'?'+s:'')+(H.id?`#/${H.id}?${H.q.toString()}`:location.hash)); }
-  if(r&&r!=='guest') L.ui.want={role:r,id:H.id&&!/^(app\.login|ob\.)/.test(H.id)?H.id:null,q:H.q.toString()}; })();
+(()=>{ const sp=new URLSearchParams(location.search), qr=sp.get('role'), H=parseHash(), r=qr||H.q.get('role');   /* the query form wins: the hash usually still carries the last role */
+  if(qr&&H.id){ H.q.set('role',qr); history.replaceState(history.state,'',location.pathname+location.search+`#/${H.id}?${H.q.toString()}`); }   /* ?role= stays in the query until /me answers, so a reload meanwhile keeps the request */
+  if(r&&r!=='guest') L.ui.want={role:r,id:H.id&&!/^(app\.login|ob\.)/.test(H.id)?H.id:null,q:H.q.toString(),load:!!qr}; })();
 /* after /me: honour the kept request if the user holds it (and remember that side) */
-const applyWant=()=>{ const w=L.ui.want; L.ui.want=null; if(!w) return false; const S=L.S(), av=avail(), pick=pickFor(w.role,av,S&&S.me); if(!pick) return false;
+const dropQueryRole=()=>{ const sp=new URLSearchParams(location.search); if(!sp.has('role')) return; sp.delete('role'); const x=sp.toString(); history.replaceState(history.state,'',location.pathname+(x?'?'+x:'')+location.hash); };
+const applyWant=()=>{ const w=L.ui.want; L.ui.want=null; if(!w) return false; if(w.load) dropQueryRole(); const S=L.S(), av=avail(), pick=pickFor(w.role,av,S&&S.me); if(!pick) return false;
   sideSet(pick); S.session={role:pick,ts:Date.now()}; L.save();
-  const ok=canOpen(w.id,pick)||(pick===w.role&&!!w.id), q=ok?new URLSearchParams(w.q||''):new URLSearchParams(); if(!ok){ const o=new URLSearchParams(w.q||''); ['lang','theme'].forEach(k=>{ if(o.get(k)) q.set(k,o.get(k)); }); }
+  const ok=canOpen(w.id,pick)||(pick===w.role&&!!w.id&&!w.load), q=ok?new URLSearchParams(w.q||''):new URLSearchParams(); if(!ok){ const o=new URLSearchParams(w.q||''); ['lang','theme'].forEach(k=>{ if(o.get(k)) q.set(k,o.get(k)); }); }
   q.set('role',pick); const target=`#/${ok?w.id:L.home(pick)}?${q.toString()}`;
   if(location.hash!==target) location.hash=target; else if(MF.booted) L.rr(); return true; };
 function roleGuard(){ const av=avail();
   const {id,q}=parseHash(); if(!id||/^(app\.login|ob\.)/.test(id)) return false;
   const r=q.get('role'), S=L.S();
   /* until /me has been read on this load, an explicit role is kept aside and applied once /me confirms it */
-  if(r&&!L.ui.meFresh&&r!=='guest') L.ui.want={role:r,id,q:q.toString()};
+  if(r&&!L.ui.meFresh&&r!=='guest'&&!(L.ui.want&&L.ui.want.load)) L.ui.want={role:r,id,q:q.toString()};   /* a query-form request stays until /me answers */
   if(!av.length) return false;
   const pick=pickFor(r,av,S&&S.me);
   if(pick){ const ok=canOpen(id,pick); if(L.ui.meFresh) sideSet(pick);
-    if(pick===r) return false;   /* a role the user holds: the app sets the session from the URL (and shows its own no-access page on a screen that role can't open) */
+    if(pick===r&&(ok||!(L.ui.want&&L.ui.want.load))) return false;   /* a role the user holds: the app sets the session from the URL (and shows its own no-access page on a screen that role can't open) */
     q.set('role',pick); if(!ok) ['id','no','k','sku','back'].forEach(k=>q.delete(k)); S.session={role:pick,ts:Date.now()}; L.save();
     history.replaceState(history.state,'',location.pathname+location.search+`#/${ok?id:L.home(pick)}?${q.toString()}`); return true; }
   const def=sessRole(); if(!def) return false;
