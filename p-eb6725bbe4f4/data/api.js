@@ -29,10 +29,11 @@ const PATHS=Object.freeze(Object.assign({
 const QS=(()=>{ try{ return new URLSearchParams(location.search); }catch(e){ return new URLSearchParams(); } })();
 const onCatalyst=/\.catalystserverless\.(com|in|eu)$/i.test(location.hostname||'') && /^\/(server|app)\//.test(location.pathname||'');
 let mode=C.mode;
-if(mode!=='sample'&&mode!=='live') mode=(onCatalyst||QS.get('mode')==='live')?'live':'sample';
-if(QS.get('api')==='sample') mode='sample';
+if(mode!=='sample'&&mode!=='live') mode=onCatalyst?'live':'sample';
+if(!onCatalyst||QS.get('api')==='sample') mode='sample';
 C.mode=mode; C.baseUrl='';                 /* always same-origin / relative */
 const LIVE=mode==='live';
+const READ_ONLY=LIVE; // Development preview: no business mutations or OTP sends.
 const LIVE_STORES={shop:true};             /* seller apps (mkt) stay on sample data for now */
 const isLive=name=>LIVE&&!!LIVE_STORES[name];
 const T=(en,ar)=>((document.documentElement.lang||'').slice(0,2)==='ar'||/[?&]lang=ar/.test(location.hash))?ar:en;
@@ -118,6 +119,7 @@ const sameOrig=u=>{ try{ return new URL(u,location.href).origin===location.origi
 function request(method,path,body,opt){
   opt=opt||{};
   if(!LIVE) return Promise.reject(Object.assign(new Error('sample mode: no network'),{code:'SAMPLE_MODE'}));
+  if(READ_ONLY && method!=='GET' && !(method==='POST' && path==='/auth/logout' && !opt.erp)) return Promise.reject(Object.assign(new Error('Read-only Development preview'),{code:'READ_ONLY_PREVIEW',status:403}));
   const url=(C.baseUrl||'')+(opt.erp?C.erpPrefix:C.prefix)+path;
   const idem=method!=='GET'?(opt.idem||uid()):null;
   const send=(tk,retried)=>{
@@ -142,13 +144,13 @@ const outbox={ all:()=>ls.get(OBK)||[], push(op){ const a=outbox.all(); a.push(o
 let flushing=false;
 
 function flush(){
-  if(!LIVE||flushing||!navigator.onLine) return Promise.resolve();
+  if(!LIVE||READ_ONLY||flushing||!navigator.onLine) return Promise.resolve();
   const a=outbox.all(); if(!a.length) return Promise.resolve();
   flushing=true; const op=a[0];
   return request(op.m,op.path,op.body,{idem:op.idem,erp:op.erp}).then(()=>{ const rest=outbox.all().slice(1); outbox.set(rest); if(op.batch&&!rest.some(x=>x.batch===op.batch)) delete batches[op.batch]; flushing=false; return flush(); },
     e=>{ flushing=false; if(e.notEnabled||(e.status&&e.status>=400&&e.status<500&&e.status!==401&&e.status!==429)){ const rest=outbox.all().slice(1).filter(x=>!op.batch||x.batch!==op.batch); outbox.set(rest); const b=op.batch&&batches[op.batch]; delete batches[op.batch]; emit('rejected',{op,store:op.store,restore:b?b.restore:null,error:e.body||String(e),notEnabled:!!e.notEnabled}); return flush(); } });
 }
-if(LIVE){ addEventListener('online',flush); setInterval(flush,30000); setTimeout(flush,1500); }
+if(LIVE&&!READ_ONLY){ addEventListener('online',flush); setInterval(flush,30000); setTimeout(flush,1500); }
 
 /* ---------- per-entity diff -> operations ---------- */
 function diff(store,prev,next){
@@ -198,18 +200,19 @@ function store(name,key){
   const k=ck(key,name);
   return {
     name, key,
-    read(){ return ls.get(k); },   /* live: the diff base is set only from the server snapshot (boot), never from this device's cache */
+    read(){ return isLive(name)?null:ls.get(k); },   /* live: the diff base is set only from the server snapshot (boot), never from this device's cache */
     write(state){
+      if(READ_ONLY&&isLive(name)) return state;
       ls.set(k,state);
       if(isLive(name)){ const prev=synced[name]; if(prev){ const ops=diff(name,prev,state); if(ops.length){ const bid='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); const restore={}; new Set([...Object.keys(prev),...Object.keys(state)]).forEach(x=>{ if(x==='session'||x==='prefs') return; if(J(prev[x])!==J(state[x])) restore[x]=prev[x]===undefined?null:JSON.parse(J(prev[x])); }); batches[bid]={restore}; ops.forEach(op=>{ op.batch=bid; op.store=name; outbox.push(op); }); flush(); } } synced[name]=JSON.parse(J(state)); }
       return state;
     },
     clear(){ ls.del(k); },
-    replace(state){ ls.set(k,state); if(isLive(name)) synced[name]=JSON.parse(J(state)); return state; },
+    replace(state){ if(!isLive(name)) ls.set(k,state); if(isLive(name)) synced[name]=JSON.parse(J(state)); return state; },
     /* live: fetch the server snapshot (same shape as the sample state) and hand it to the app */
     boot(apply){
       if(!isLive(name)) return Promise.resolve(null);
-      return request('GET','/bootstrap/'+name).then(j=>whenReady(name).then(()=>j)).then(j=>{ let st=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:j; if(st&&transforms[name]){ try{ st=transforms[name](st); }catch(x){ console.warn('[MFAPI] transform',x); st=null; } } if(st){ synced[name]=JSON.parse(J(st)); ls.set(k,st); apply&&apply(st); emit('boot',{store:name}); } return st; },
+      return request('GET','/bootstrap/'+name).then(j=>whenReady(name).then(()=>j)).then(j=>{ let st=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:j; if(st&&transforms[name]){ try{ st=transforms[name](st); }catch(x){ console.warn('[MFAPI] transform',x); st=null; } } if(st){ synced[name]=JSON.parse(J(st)); if(!READ_ONLY) ls.set(k,st); apply&&apply(st); emit('boot',{store:name}); } return st; },
         e=>{ emit(e.status===401?'auth':'offline',{store:name,error:String(e),status:e.status}); return null; });
     }
   };
@@ -227,7 +230,7 @@ const get=(path)=>request('GET',path);
 /* preferences: saved on this device; sent to the gateway only when the user changes one. Quiet on failure;
    once the gateway answers 501 we stop sending for this browser session. */
 function savePrefs(p){
-  if(!LIVE||!isLive('shop')) return Promise.resolve(null);
+  if(!LIVE||READ_ONLY||!isLive('shop')) return Promise.resolve(null);
   try{ if(sessionStorage.getItem('mfapi-prefs-off')) return Promise.resolve(null); }catch(e){}
   return request('PUT','/me/preferences',p||{},{quiet:true}).catch(e=>{ if(e&&e.notEnabled){ try{ sessionStorage.setItem('mfapi-prefs-off','1'); }catch(x){} } return null; });
 }
