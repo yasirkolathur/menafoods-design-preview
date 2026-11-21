@@ -126,6 +126,7 @@ const SELLER_URL=()=>/theme-fresh-market\//.test(location.pathname)?'seller.html
 let signedIn2=j=>{ const me=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:(j||{}); const S=L.S(); S.me=me; const R=L.rolesFromMe(me); S.me.avail=R.roles; L.save(); applyCtx();
   if(!R.roles.length&&R.seller){ location.href=SELLER_URL(); return; }
   if(applyWant()) return;
+  if(typeof L.landAfterMe==='function'){ L.landAfterMe(R); return; }
   const last=sideGet(me); L.login(last&&R.roles.includes(last)?last:(R.roles[0]||'viewer')); };
 /* ---------- roles: only the signed-in user's own roles (from /me); mixed users switch sides with a visible control ---------- */
 const avail=()=>{ const S=L.S(); return (S&&S.me&&Array.isArray(S.me.avail))?S.me.avail:[]; };
@@ -142,37 +143,53 @@ const sessRole=()=>{ const S=L.S(), av=avail(), r=S&&S.session&&S.session.role; 
 /* an explicit ?role= (a role, or 'staff' / 'customer') beats the remembered side once /me confirms the user holds it */
 const isAlias=r=>r==='staff'||r==='customer';
 const pickFor=(r,av,me)=>{ if(!r) return null; if(isAlias(r)){ const last=sideGet(me); return (last&&av.includes(last)&&L.side(last)===r)?last:(av.find(x=>L.side(x)===r)||null); } return av.includes(r)?r:null; };
-const canOpen=(id,r)=>{ const d=id&&MF.SCR[id]; return !!(d&&Array.isArray(d.r)&&d.r.includes(r)); };
+const canOpen=(id,r)=>{ const d=id&&MF.SCR[id]; if(!d||d.r==null) return false; const rr=Array.isArray(d.r)?d.r:String(d.r).split(/\s+/); return rr.includes(r)||rr.includes('*'); };
 const parseHash=()=>{ const h=location.hash.replace(/^#\/?/,''), i=h.indexOf('?'); return {id:i<0?h:h.slice(0,i), q:new URLSearchParams(i<0?'':h.slice(i+1))}; };
-/* on load: the query form (app.html?role=staff#/b.home) is moved into the hash; the request is kept until /me answers */
-(()=>{ const sp=new URLSearchParams(location.search), qr=sp.get('role'), H=parseHash(), r=qr||H.q.get('role');   /* the query form wins: the hash usually still carries the last role */
-  if(qr&&H.id){ H.q.set('role',qr); history.replaceState(history.state,'',location.pathname+location.search+`#/${H.id}?${H.q.toString()}`); }   /* ?role= stays in the query until /me answers, so a reload meanwhile keeps the request */
-  if(r&&r!=='guest') L.ui.want={role:r,id:H.id&&!/^(app\.login|ob\.)/.test(H.id)?H.id:null,q:H.q.toString(),load:!!qr}; })();
+/* on load: capture the explicit URL role/lang (query form wins over the hash, which may still carry a remembered value). Do not let a stale session rewrite them before /me. */
+const parseSearch=()=>new URLSearchParams(location.search);
+const isPub=id=>!id||/^(app\.login|ob\.)/.test(id);
+const syncQueryIntoHash=()=>{ const sp=parseSearch(), H=parseHash(); if(!H.id) return false; let ch=false;
+  const ql=sp.get('lang'); if(ql&&H.q.get('lang')!==ql){ H.q.set('lang',ql); ch=true; }
+  const qr=sp.get('role'); if(qr){ H.q.set('role',qr); ch=true; }   /* ?role= stays in the query until /me answers, so a reload meanwhile keeps the request */
+  const qt=sp.get('theme'); if(qt&&H.q.get('theme')!==qt){ H.q.set('theme',qt); ch=true; }
+  if(ch) history.replaceState(history.state,'',location.pathname+location.search+`#/${H.id}?${H.q.toString()}`);
+  return ch; };
+(()=>{ const sp=parseSearch(), H=parseHash();
+  L.ui.entry={id:H.id||'', role:sp.get('role')||H.q.get('role')||null, lang:sp.get('lang')||H.q.get('lang')||null, theme:sp.get('theme')||H.q.get('theme')||null};
+  syncQueryIntoHash();
+  const r=L.ui.entry.role, H2=parseHash();
+  if(r&&r!=='guest') L.ui.want={role:r,id:H2.id&&!isPub(H2.id)?H2.id:null,q:H2.q.toString(),load:!!sp.get('role')}; })();
+const hashLang=()=>{ const sp=parseSearch(), H=parseHash(); return sp.get('lang')||H.q.get('lang')||(L.ui.entry&&L.ui.entry.lang)||null; };
+const keepLang=(q)=>{ const lang=hashLang(); if(lang) q.set('lang',lang); const th=(parseSearch().get('theme')||(L.ui.entry&&L.ui.entry.theme)); if(th&&!q.get('theme')) q.set('theme',th); return q; };
 /* after /me: honour the kept request if the user holds it (and remember that side) */
 const dropQueryRole=()=>{ const sp=new URLSearchParams(location.search); if(!sp.has('role')) return; sp.delete('role'); const x=sp.toString(); history.replaceState(history.state,'',location.pathname+(x?'?'+x:'')+location.hash); };
 const applyWant=()=>{ const w=L.ui.want; L.ui.want=null; if(!w) return false; if(w.load) dropQueryRole(); const S=L.S(), av=avail(), pick=pickFor(w.role,av,S&&S.me); if(!pick) return false;
   sideSet(pick); S.session={role:pick,ts:Date.now()}; L.save();
   const ok=canOpen(w.id,pick)||(pick===w.role&&!!w.id&&!w.load), q=ok?new URLSearchParams(w.q||''):new URLSearchParams(); if(!ok){ const o=new URLSearchParams(w.q||''); ['lang','theme'].forEach(k=>{ if(o.get(k)) q.set(k,o.get(k)); }); }
-  q.set('role',pick); const target=`#/${ok?w.id:L.home(pick)}?${q.toString()}`;
+  keepLang(q); q.set('role',pick); const target=`#/${ok?w.id:L.home(pick)}?${q.toString()}`;
   if(location.hash!==target) location.hash=target; else if(MF.booted) L.rr(); return true; };
 function roleGuard(){ const av=avail();
-  const {id,q}=parseHash(); if(!id||/^(app\.login|ob\.)/.test(id)) return false;
+  const {id,q}=parseHash(); if(isPub(id)) return false;
   const r=q.get('role'), S=L.S();
-  /* until /me has been read on this load, an explicit role is kept aside and applied once /me confirms it */
-  if(r&&!L.ui.meFresh&&r!=='guest'&&!(L.ui.want&&L.ui.want.load)) L.ui.want={role:r,id,q:q.toString()};   /* a query-form request stays until /me answers */
+  /* until /me has been read on this load, do not rewrite the route from a stale remembered role */
+  if(!L.ui.meFresh){
+    const expl=(L.ui.entry&&L.ui.entry.role)||null;
+    if(expl&&expl!=='guest'&&!(L.ui.want&&L.ui.want.load)) L.ui.want={role:expl,id:(L.ui.entry&&L.ui.entry.id&&!isPub(L.ui.entry.id))?L.ui.entry.id:id,q:q.toString()};
+    return false;
+  }
   if(!av.length) return false;
   const pick=pickFor(r,av,S&&S.me);
-  if(pick){ const ok=canOpen(id,pick); if(L.ui.meFresh) sideSet(pick);
+  if(pick){ const ok=canOpen(id,pick); sideSet(pick);
     if(pick===r&&(ok||!(L.ui.want&&L.ui.want.load))) return false;   /* a role the user holds: the app sets the session from the URL (and shows its own no-access page on a screen that role can't open) */
-    q.set('role',pick); if(!ok) ['id','no','k','sku','back'].forEach(k=>q.delete(k)); S.session={role:pick,ts:Date.now()}; L.save();
+    keepLang(q); q.set('role',pick); if(!ok) ['id','no','k','sku','back'].forEach(k=>q.delete(k)); S.session={role:pick,ts:Date.now()}; L.save();
     history.replaceState(history.state,'',location.pathname+location.search+`#/${ok?id:L.home(pick)}?${q.toString()}`); return true; }
   const def=sessRole(); if(!def) return false;
   if(S.session&&S.session.role!==def){ S.session={role:def,ts:Date.now()}; L.save(); }
-  q.set('role',def); if(r) ['id','no','k','sku','back'].forEach(k=>q.delete(k));
+  keepLang(q); q.set('role',def); if(r) ['id','no','k','sku','back'].forEach(k=>q.delete(k));
   const href=r?`#/${L.home(def)}?${q.toString()}`:`#/${id}?${q.toString()}`;   /* a foreign role → default landing; no role → keep the screen, add the user's role */
   history.replaceState(history.state,'',location.pathname+location.search+href); return true; }
 window.addEventListener('hashchange',e=>{ if(roleGuard()){ e.stopImmediatePropagation(); if(MF.booted){ MF.render(true); if(L.postFn) L.postFn(); } } },true);   /* capture: runs before the app's own hashchange handlers */
-L.roleGuard=()=>{ roleGuard(); const S=L.S(), d=sessRole(); if(d&&S.session&&S.session.role&&!avail().includes(S.session.role)){ S.session={role:d,ts:Date.now()}; L.save(); } };   /* first run at the end of this file, before the app boots */
+L.roleGuard=()=>{ syncQueryIntoHash(); roleGuard(); if(!L.ui.meFresh) return; const S=L.S(), d=sessRole(); if(d&&S.session&&S.session.role&&!avail().includes(S.session.role)){ S.session={role:d,ts:Date.now()}; L.save(); } };   /* first run at the end of this file, before the app boots */
 /* the side switch: customer home and More (customer side), staff home and More (staff side) */
 const sideBar=c=>{ const av=avail(), cur=c.role; if(!av.some(isStaffR)||!av.some(r=>!isStaffR(r))||!av.includes(cur)) return '';
   const toStaff=!isStaffR(cur);
@@ -421,18 +438,39 @@ API.on('auth',()=>{ const S=L.S(); if(S&&S.session){ S.session=null; L.save(); }
 /* role guard before the first render */
 /* /me is read again on every load of a signed-in device: roles change on the server and the Catalyst user can change, so the cached list is never trusted on its own */
 const meOf=j=>(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:(j||{});
-L.ui.meFresh=false; L.ui.meBusy=false;
+L.ui.meFresh=false; L.ui.meBusy=false; L.ui.meHold=false;
+function paintMeSkeleton(){ const lang=hashLang()||((navigator.language||'').toLowerCase().startsWith('ar')?'ar':'en');
+  document.documentElement.lang=lang; document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+  const msg=t('Loading your account…','جارٍ تحميل حسابك…');
+  const inner=`<div class="skel" id="mf-me-skel" aria-busy="true"><p class="vh" role="status">${msg}</p><div class="sk card"><i class="w60"></i><i class="w90"></i><i class="w40"></i></div><div class="sk card"><i class="w60"></i><i class="w90"></i><i class="w40"></i></div><div class="sk card"><i class="w60"></i><i class="w90"></i><i class="w40"></i></div></div>`;
+  const main=document.getElementById('main');
+  if(main){ if(!document.getElementById('mf-me-skel')) main.insertAdjacentHTML('afterbegin', inner); return; }
+  if(document.getElementById('mf-me-skel')) return;
+  const sk=document.getElementById('mf-boot-skel'); if(sk){ sk.setAttribute('aria-busy','true'); return; }
+  document.body.insertAdjacentHTML('afterbegin', `<main id="main" class="body">${inner}</main>`); }
+{ const r0=MF.render; if(typeof r0==='function') MF.render=function(focus){ if(L.ui.meHold&&!L.ui.meFresh){ paintMeSkeleton(); return; } return r0.apply(this,arguments); }; }
+/* pick: explicit URL ?role if the user holds it, else a remembered role that /me still lists, else the first /me role. Keep the opened screen when that role can open it. Never let remembered lang override an explicit ?lang. */
+L.landAfterMe=R=>{ const S=L.S(), av=R.roles||[], me=S.me, e=L.ui.entry||{};
+  const last=sideGet(me);
+  const pick=pickFor(e.role,av,me)||(last&&av.includes(last)?last:(av[0]||'viewer'));
+  const id0=(e.id&&!isPub(e.id))?e.id:parseHash().id;
+  sideSet(pick); S.session={role:pick,ts:Date.now()}; L.save();
+  const ok=canOpen(id0,pick);
+  const q=keepLang(new URLSearchParams(parseHash().q.toString()));
+  q.set('role',pick); if(!ok) ['id','no','k','sku','back'].forEach(k=>q.delete(k));
+  const target=`#/${ok&&id0?id0:L.home(pick)}?${q.toString()}`;
+  if(location.hash!==target) location.hash=target; else if(MF.booted) L.rr(); };
 L.refreshMe=()=>{ const S0=L.S(); if(!S0||!S0.session||L.ui.meBusy||L.ui.meFresh) return null; L.ui.meBusy=true;
-  return API.get('/me').then(j=>{ L.ui.meBusy=false; L.ui.meFresh=true; const me=meOf(j), S=L.S(), prevU=uidOf(S.me), R=L.rolesFromMe(me);
+  return API.get('/me').then(j=>{ L.ui.meBusy=false; L.ui.meFresh=true; L.ui.meHold=false; const me=meOf(j), S=L.S(), R=L.rolesFromMe(me);
       S.me=me; S.me.avail=R.roles; applyCtx();
       if(!R.roles.length){ L.save(); if(R.seller){ location.href=SELLER_URL(); return; } }
-      const cur=S.session&&S.session.role, same=!!prevU&&prevU===uidOf(me);
       if(applyWant()) return;
-      if(same&&cur&&R.roles.includes(cur)){ L.save(); if(MF.booted) L.rr(); return; }   /* same user, same side: re-render so the side switch shows */
-      const last=sideGet(me), h0=location.hash; L.save(); L.login(last&&R.roles.includes(last)?last:(R.roles[0]||'viewer')); if(location.hash===h0&&MF.booted) L.rr(); },
-    e=>{ L.ui.meBusy=false; L.ui.want=null; if(e&&e.status===401){ const S=L.S(); S.session=null; S.me=null; L.save(); L.ui.meTried=false; if(MF.booted) L.logout(); } }); };
+      L.landAfterMe(R); },
+    e=>{ L.ui.meBusy=false; L.ui.meHold=false; L.ui.want=null; if(e&&e.status===401){ const S=L.S(); S.session=null; S.me=null; L.save(); L.ui.meTried=false; if(MF.booted) L.logout(); } else if(MF.booted){ L.ui.meFresh=true; L.rr(); } }); };
 /* sign-in on this load already read /me */
-{ const s2=signedIn2; signedIn2=j=>{ L.ui.meFresh=true; return s2(j); }; }
-/* role guard before the first render; then /me */
-{ const b0=MF.boot; if(typeof b0==='function') MF.boot=function(){ try{ L.roleGuard(); }catch(e){} const r=b0.apply(this,arguments); try{ L.refreshMe(); }catch(e){} return r; }; }
+{ const s2=signedIn2; signedIn2=j=>{ L.ui.meFresh=true; L.ui.meHold=false; return s2(j); }; }
+/* hold the first signed-in render until /me resolves, then role-guard and refresh */
+{ const b0=MF.boot; if(typeof b0==='function') MF.boot=function(){ try{ syncQueryIntoHash(); }catch(e){}
+    const S0=L.S(); if(S0&&S0.session&&!L.ui.meFresh) L.ui.meHold=true;
+    try{ L.roleGuard(); }catch(e){} const r=b0.apply(this,arguments); try{ L.refreshMe(); }catch(e){} return r; }; }
 })();
