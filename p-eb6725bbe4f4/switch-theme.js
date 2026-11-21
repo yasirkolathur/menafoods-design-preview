@@ -11,7 +11,7 @@ const rel=location.href.split(/[?#]/)[0].slice(BASE.length); // e.g. direction-b
 const parts=rel.split('/'); const FOLDER=parts[0]||''; const SUB=parts.length>2?parts[1]:''; let PAGE=parts[parts.length-1]||'index.html';
 const THEME=SUB==='concepts'?'v3-concepts':FOLDER;
 const A_IDS='auth.signin auth.otp auth.picker auth.lang b.home b.catalog b.product b.cart b.checkout b.submitted b.approvalReq b.approverInbox b.orders b.orderDetail b.finance b.creditApp b.creditStatus b.branches b.notifications b.profile s.customers s.visit s.order s.suggestions s.creditReview s.targets v.route v.stock v.sale v.collect v.pod d.route d.stop d.pod d.failed d.returns d.sync k.picklist k.pick k.shortage k.dispatch k.receiving a.approvals a.zoho a.aging a.holds a.collections a.statements m.approvals m.users m.rules m.catalog m.settings m.audit c.360'.split(' ');
-const LIVE={login:'app.login',home:'b.home',catalog:'b.catalog',cart:'b.cart',orders:'b.orders',credit:'b.credit',sales:'s.today',van:'v.route',driver:'d.route',store:'k.lists',acct:'a.inbox',admin:'ad.overview',rewards:'re.home',hub:'bh.home',cashbook:'cb.today',care:'cc.home',drive:'set.drive'};
+const LIVE={login:'app.login',home:'b.home',catalog:'b.catalog',cart:'b.cart',orders:'b.orders',credit:'b.credit',sales:'s.today',van:'v.route',driver:'d.route',store:'k.lists',acct:'a.inbox',admin:'ad.overview',rewards:'re.home',hub:'bh.home',cashbook:'cb.today',care:'cc.home',drive:'set.drive',theme:'set.theme'};
 const AM={login:'auth.signin',home:'b.home',catalog:'b.catalog',cart:'b.cart',orders:'b.orders',credit:'b.creditStatus',sales:'s.customers',van:'v.route',driver:'d.route',store:'k.picklist',acct:'a.approvals',admin:'m.approvals'};
 const LROLE={sales:'sales',van:'van',driver:'driver',store:'store',acct:'acct',admin:'admin',cashbook:'cashier',home:'owner',catalog:'owner',cart:'owner',orders:'owner',credit:'owner',rewards:'owner',hub:'owner'};
 const SELLER={seller:'s.welcome',erp:'s.conn',sadmin:'a.sellers'};
@@ -22,13 +22,13 @@ const TH=[
  {id:'theme-fresh-market',g:'t',e:'live',seller:1,n:['Fresh Market','السوق الطازج'],m:Object.assign({},LIVE,SELLER)},
  {id:'direction-a-v2',g:'t',e:'a',ids:null,n:['Direction A v2 · Reorder-first','الاتجاه A الإصدار 2'],m:Object.assign({},AM,{rewards:'h.rewards',hub:'h.hub',cashbook:'cb.today'})},
  {id:'direction-a',g:'t',e:'a',ids:A_IDS,n:['Direction A · Quiet Pro','الاتجاه A · احترافي هادئ'],m:AM},
- {id:'direction-b',g:'t',e:'b',seller:1,n:['Direction B · Smart Basket','الاتجاه B · السلة الذكية'],m:Object.assign({login:'a.signin',home:'c.home',catalog:'c.catalog',cart:'c.cart',orders:'c.orders',credit:'c.credit',sales:'s.customers',van:'v.route',driver:'d.route',store:'k.picklist',acct:'a.approvals',admin:'m.approvals',drive:'c.drive'},SELLER)},
- {id:'direction-c',g:'t',e:'c',seller:1,n:['Direction C · Role Command Hubs','الاتجاه C · لوحات قيادة حسب الدور'],m:Object.assign({login:'auth/auth-phone',home:'customer/b-hub',catalog:'customer/b-catalog',cart:'customer/b-cart',orders:'customer/b-orders',credit:'customer/b-credit-status',sales:'sales/s-hub',van:'van/v-hub',driver:'driver/d-hub',store:'store/k-hub',acct:'accountant/a-hub',admin:'admin/m-hub',drive:'customer/b-drive'},SELLER)},
+ {id:'direction-b',g:'t',e:'b',seller:1,n:['Direction B · Smart Basket','الاتجاه B · السلة الذكية'],m:Object.assign({login:'a.signin',home:'c.home',catalog:'c.catalog',cart:'c.cart',orders:'c.orders',credit:'c.credit',sales:'s.customers',van:'v.route',driver:'d.route',store:'k.picklist',acct:'a.approvals',admin:'m.approvals',drive:'c.drive',theme:'c.theme'},SELLER)},
+ {id:'direction-c',g:'t',e:'c',seller:1,n:['Direction C · Role Command Hubs','الاتجاه C · لوحات قيادة حسب الدور'],m:Object.assign({login:'auth/auth-phone',home:'customer/b-hub',catalog:'customer/b-catalog',cart:'customer/b-cart',orders:'customer/b-orders',credit:'customer/b-credit-status',sales:'sales/s-hub',van:'van/v-hub',driver:'driver/d-hub',store:'store/k-hub',acct:'accountant/a-hub',admin:'admin/m-hub',drive:'customer/b-drive',theme:'customer/b-theme'},SELLER)},
  {id:'business-hub',g:'p',e:'a',n:['Business Hub · mini ERP','مركز الأعمال · ERP مصغر'],m:{hub:'bh.home',cashbook:'bh.daybook',sales:'st.portfolio',admin:'st.admin'}},
  {id:'rewards-earn',g:'p',e:'a',n:['Rewards & Earn','المكافآت والربح'],m:{rewards:'re.home',admin:'rm.overview',sales:'rs.earn'}},
  {id:'v3-concepts',g:'p',e:'k',n:['Calm Commerce · first concept','التجارة الهادئة · المفهوم الأول'],m:{home:'home',cart:'cart',sales:'c360'}}
 ];
-const MOD={drive:['Drive Mode','وضع القيادة'],login:['Sign in','تسجيل الدخول'],home:['Buyer home','الرئيسية للمشتري'],catalog:['Catalogue','المنتجات'],cart:['Cart & checkout','السلة وإتمام الطلب'],orders:['Orders','الطلبات'],credit:['Credit & invoices','الائتمان والفواتير'],sales:['Salesperson','المندوب'],van:['Van sales','البيع بالفان'],driver:['Delivery driver','سائق التوصيل'],store:['Warehouse','المستودع'],acct:['Accountant · credit desk','المحاسب · مكتب الائتمان'],admin:['Admin','الإدارة'],rewards:['Rewards & Earn','المكافآت والربح'],hub:['Business Hub','مركز الأعمال'],cashbook:['Cash book','دفتر النقدية'],care:['Customer care','خدمة العملاء'],seller:['Seller app','تطبيق البائع'],erp:['ERP Connector','موصل ERP'],sadmin:['Marketplace admin','إدارة السوق'],studio:['Design studio · all screens','استوديو التصميم · كل الشاشات']};
+const MOD={drive:['Drive Mode','وضع القيادة'],login:['Sign in','تسجيل الدخول'],home:['Buyer home','الرئيسية للمشتري'],catalog:['Catalogue','المنتجات'],cart:['Cart & checkout','السلة وإتمام الطلب'],orders:['Orders','الطلبات'],credit:['Credit & invoices','الائتمان والفواتير'],sales:['Salesperson','المندوب'],van:['Van sales','البيع بالفان'],driver:['Delivery driver','سائق التوصيل'],store:['Warehouse','المستودع'],acct:['Accountant · credit desk','المحاسب · مكتب الائتمان'],admin:['Admin','الإدارة'],rewards:['Rewards & Earn','المكافآت والربح'],hub:['Business Hub','مركز الأعمال'],cashbook:['Cash book','دفتر النقدية'],care:['Customer care','خدمة العملاء'],theme:['Theme','الثيم'],seller:['Seller app','تطبيق البائع'],erp:['ERP Connector','موصل ERP'],sadmin:['Marketplace admin','إدارة السوق'],studio:['Design studio · all screens','استوديو التصميم · كل الشاشات']};
 const cur=TH.find(t=>t.id===THEME);
 const hq=()=>{ const h=location.hash.replace(/^#\/?/,''); const i=h.indexOf('?'); return {id:i<0?h:h.slice(0,i),q:new URLSearchParams(i<0?'':h.slice(i+1))}; };
 function lang(){
@@ -44,15 +44,15 @@ function lang(){
 function here(){
   if(!cur) return {mod:'home'};
   if(PAGE==='seller.html'){ const id=hq().id||'s.welcome'; return {mod:id.startsWith('s.conn')?'erp':id.startsWith('a.')?'sadmin':'seller',key:location.hash||'#/s.welcome',eng:'mkt'}; }
-  if(cur.e==='live'){ const id=hq().id||'b.home'; if(id==='set.drive') return {mod:'drive',key:id,eng:'live',studio:PAGE==='index.html'}; const sc=window.MF&&MF.SCR&&MF.SCR[id]; const a=sc&&sc.a;
+  if(cur.e==='live'){ const id=hq().id||'b.home'; if(id==='set.drive') return {mod:'drive',key:id,eng:'live',studio:PAGE==='index.html'}; if(id==='set.theme') return {mod:'theme',key:id,eng:'live',studio:PAGE==='index.html'}; const sc=window.MF&&MF.SCR&&MF.SCR[id]; const a=sc&&sc.a;
     const byA={onboarding:'login',home:'home',search:'catalog',product:'catalog',cart:'cart',reorder:'home',orders:'orders',credit:'credit',invoices:'credit',team:'home',c360:'sales',sales:'sales',van:'van',driver:'driver',store:'store',backoffice:'acct',admin:'admin',rewards:'rewards',hub:'hub',cashbook:'cashbook',care:'care',notifications:'home',settings:'home'};
     return {mod:byA[a]||pre(id),key:id,eng:'live',studio:PAGE==='index.html'}; }
   if(cur.e==='c'){ const p=new URLSearchParams(location.hash.slice(1)); const r=p.get('r')||'customer', s=p.get('s')||'';
-    if(s==='b-drive') return {mod:'drive',eng:'c',studio:PAGE==='index.html'};
+    if(s==='b-drive') return {mod:'drive',eng:'c',studio:PAGE==='index.html'}; if(s==='b-theme') return {mod:'theme',eng:'c',studio:PAGE==='index.html'};
     const byR={auth:'login',customer:/catalog|product/.test(s)?'catalog':/cart|checkout/.test(s)?'cart':/order/.test(s)?'orders':/credit|finance|nafith/.test(s)?'credit':'home',sales:'sales',van:'van',driver:'driver',store:'store',accountant:'acct',admin:'admin'};
     return {mod:byR[r]||'home',eng:'c',studio:PAGE==='index.html'}; }
   if(cur.e==='k'){ const s=new URLSearchParams(location.hash.slice(1)).get('s')||'home'; return {mod:s==='c360'?'sales':s==='cart'?'cart':'home'}; }
-  const id=hq().id; if(id==='c.drive') return {mod:'drive',key:id,eng:'b'}; if(THEME==='business-hub') return {mod:/^bh\.(daybook|open|handover|close)/.test(id)?'cashbook':id==='st.admin'?'admin':id.startsWith('st.')?'sales':'hub'};
+  const id=hq().id; if(id==='c.drive') return {mod:'drive',key:id,eng:'b'}; if(id==='c.theme') return {mod:'theme',key:id,eng:'b'}; if(THEME==='business-hub') return {mod:/^bh\.(daybook|open|handover|close)/.test(id)?'cashbook':id==='st.admin'?'admin':id.startsWith('st.')?'sales':'hub'};
   if(THEME==='rewards-earn') return {mod:'rewards'};
   if(cur.e==='b'&&/^a\.(signin|otp|picker|lang)$/.test(id)) return {mod:'login'};
   return {mod:pre(id||'b.home'),key:id,eng:cur.id==='direction-b'?'b':'a'};
@@ -67,6 +67,7 @@ function pre(id){
   if(/^v\./.test(id)) return 'van'; if(/^d\./.test(id)) return 'driver'; if(/^k\./.test(id)) return 'store';
   if(/^a\./.test(id)) return 'acct'; if(/^(h\.rewards|m\.loyalty|re\.|rx\.|rs\.|rm\.)/.test(id)) return 'rewards';
   if(/^(m\.|ad\.)/.test(id)) return 'admin'; if(/^(h\.|bh\.)/.test(id)) return 'hub'; if(/^cb\./.test(id)) return 'cashbook'; if(/^cc\./.test(id)) return 'care';
+  if(/^(set\.theme|c\.theme|b-theme)$/.test(id)) return 'theme';
   return 'home';
 }
 function url(t,route,L,opt){ // route: engine-specific id for t
@@ -193,7 +194,7 @@ function place(force){ const f=root.querySelector('.fab'); if(!f||host.hasAttrib
   const key=pick.side+'|'+pick.y; if(key===lastPlace) return; lastPlace=key;
   f.classList.toggle('end',pick.side==='end'); f.style.top=pick.y+'px'; f.style.bottom='auto';
 }
-window.MFSwitch={open,close,here,place,dest:(id)=>dest(TH.find(t=>t.id===id),here(),lang()),themes:TH.map(t=>t.id),lang};
+window.MFSwitch={open,close,here,place,dest:(id)=>dest(TH.find(t=>t.id===id),here(),lang()),themes:TH.map(t=>t.id),list:()=>TH.map(t=>({id:t.id,n:t.n,tag:t.tag,g:t.g})),lang,THEME};
 function mount(){ if(!document.body) return; if(!host.isConnected) document.body.appendChild(host); if(!host.hasAttribute('open')){ lastPlace=''; build(); setTimeout(()=>place(true),60); } }
 let tm=0; const re=()=>{ clearTimeout(tm); tm=setTimeout(()=>{ if(!host.hasAttribute('open')) build(); if(!host.isConnected) document.body.appendChild(host); setTimeout(()=>place(false),80); },160); };
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mount); else mount();
@@ -204,4 +205,7 @@ const watchBody=()=>{ if(document.body) new MutationObserver(()=>{ if(!host.isCo
 if(document.body) watchBody(); else document.addEventListener('DOMContentLoaded',watchBody);
 setInterval(()=>{ if(document.body&&!host.isConnected) mount(); else place(false); },1500);
 window.addEventListener('resize',()=>{ clearTimeout(tm); tm=setTimeout(()=>{ lastPlace=''; place(true); },200); });
+LIVE.theme='set.theme';
+{ const tb=TH.find(x=>x.id==='direction-b'); if(tb&&tb.m) tb.m.theme='c.theme';
+  const tc=TH.find(x=>x.id==='direction-c'); if(tc&&tc.m) tc.m.theme='customer/b-theme'; }
 })();
