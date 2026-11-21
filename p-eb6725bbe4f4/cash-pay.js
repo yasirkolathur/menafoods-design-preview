@@ -18,7 +18,7 @@ const SAMPLE_STAFF=[
   {id:'st-noura',role:'STOREKEEPER',name:'Noura Al-Otaibi',name_ar:'نورة العتيبي'},
   {id:'st-sara',role:'ADMIN',name:'Sara Al-Dosari',name_ar:'سارة الدوسري'}
 ];
-const COLLECT_ROLES=['sales','van','driver','store','admin'];
+const COLLECT_ROLES=['sales','van','acct','admin'];
 const CUST_ROLES='owner bm buyer cashier cfin viewer recv';
 const ALL_ROLES=CUST_ROLES+' sales van driver store acct mgr admin aff';
 const ROLE_L={
@@ -43,7 +43,7 @@ function me(){ try{ const L=window.MF&&MF.L; const S=L&&L.S&&L.S(); return (S&&S
 function asPerson(x,role){ if(!x) return null;
   if(typeof x==='string'){ const n=x.trim(); return n?{id:n,role:role||'SALESPERSON',name:n,name_ar:n}:null; }
   const name=x.name||x.name_en||x.full_name||x.display_name||'';
-  const name_ar=x.name_ar||x.ar_name||name;
+  const name_ar=(x.name_ar!=null&&x.name_ar!=='')?x.name_ar:((x.ar_name!=null&&x.ar_name!=='')?x.ar_name:name);
   const id=x.id||x.user_id||x.email||name;
   if(!id&&!name) return null;
   return {id:String(id||name),role:String(x.role||x.portal_role||role||'SALESPERSON').toUpperCase().replace(/^SALES$/,'SALESPERSON'),name:name||String(id),name_ar:name_ar||name||String(id)}; }
@@ -59,9 +59,10 @@ function roleLabel(role){ const x=ROLE_L[role]||ROLE_L.SALESPERSON; return T(x[0
 function staffChoices(){ const sp=assignedSalesperson(); if(!sp) return [];
   const extra=[];
   const m=me(), acc=m.account||{};
-  const list=acc.staff_contacts||acc.collect_staff||acc.staff||m.staff_contacts;
+  const list=acc.staff_contacts||m.staff_contacts;
   if(Array.isArray(list)) list.forEach(x=>{ const p=asPerson(x); if(p&&p.id!==sp.id) extra.push(p); });
-  if(!isLive()||!extra.length){
+  /* sample staff (Majed / Noura / Sara) are preview-only — never in live mode, even if staff_contacts is empty */
+  if(!isLive()){
     SAMPLE_STAFF.forEach(s=>{ if(s.id!==sp.id&&!extra.some(e=>e.id===s.id)&&s.role!=='SALESPERSON') extra.push(s); });
   }
   return [sp].concat(extra); }
@@ -309,12 +310,15 @@ function patchStaffHome(){ const MF=window.MF; const d=MF&&MF.SCR&&MF.SCR['lv.st
     if(out&&typeof out.b==='string'){ out.b=add(out.b); return out; }
     return out; }; }
 
+function payRoles(){ const d=window.MF&&MF.SCR&&MF.SCR['b.pay'];
+  if(d&&d.r){ const r=Array.isArray(d.r)?d.r.slice():String(d.r).split(/\s+/).filter(Boolean); if(r.length) return r; }
+  return ['owner','bm','cfin']; }
 function registerMF(){ const MF=window.MF; if(!MF||!MF.S||MF.SCR['b.pay.cash']) return;
-  const S=MF.S;
-  S('b.pay.cash',{a:'invoices',r:CUST_ROLES,t:[T('Pay by hand','الدفع يدوياً'),T('Pay by hand','الدفع يدوياً')],back:'b.pay',flow:true,noSeg:true,render:renderCashConfirm});
-  S('b.pay.otp',{a:'invoices',r:CUST_ROLES,t:[T('Confirm with a code','التأكيد برمز'),T('Confirm with a code','التأكيد برمز')],back:'b.pay.cash',flow:true,noSeg:true,render:renderOtp});
-  S('b.pay.cash.done',{a:'invoices',r:CUST_ROLES,t:[T('Payment received','تم استلام الدفعة'),T('Payment received','تم استلام الدفعة')],back:'b.finance',nav:'b.finance',noSeg:true,render:renderDone});
-  S('lv.cash',{a:'home',r:'sales van driver store admin',t:[T('Collect cash payment','تحصيل دفعة نقدية'),T('Collect cash payment','تحصيل دفعة نقدية')],back:'lv.staff',noSeg:true,render:renderCollect});
+  const S=MF.S; const PAY=payRoles();
+  S('b.pay.cash',{a:'invoices',r:PAY.join(' '),t:[T('Pay by hand','الدفع يدوياً'),T('Pay by hand','الدفع يدوياً')],back:'b.pay',flow:true,noSeg:true,render:renderCashConfirm});
+  S('b.pay.otp',{a:'invoices',r:PAY.join(' '),t:[T('Confirm with a code','التأكيد برمز'),T('Confirm with a code','التأكيد برمز')],back:'b.pay.cash',flow:true,noSeg:true,render:renderOtp});
+  S('b.pay.cash.done',{a:'invoices',r:PAY.join(' '),t:[T('Payment received','تم استلام الدفعة'),T('Payment received','تم استلام الدفعة')],back:'b.finance',nav:'b.finance',noSeg:true,render:renderDone});
+  S('lv.cash',{a:'home',r:COLLECT_ROLES.join(' '),t:[T('Collect cash payment','تحصيل دفعة نقدية'),T('Collect cash payment','تحصيل دفعة نقدية')],back:'lv.staff',noSeg:true,render:renderCollect});
   /* titles are bilingual arrays — MF.S expects [en,ar] */
   MF.SCR['b.pay.cash'].t=['Pay by hand','الدفع يدوياً'];
   MF.SCR['b.pay.otp'].t=['Confirm with a code','التأكيد برمز'];
@@ -363,7 +367,12 @@ const THEME_LIST=[
   ['direction-b','Direction B · Smart Basket','الاتجاه B · السلة الذكية'],
   ['direction-c','Direction C · Role Command Hubs','الاتجاه C · لوحات قيادة حسب الدور']
 ];
-function currentThemeId(){ const m=location.pathname.match(/p-eb6725bbe4f4\/([^/]+)/); return m?m[1]:''; }
+function currentThemeId(){
+  const ids=['theme-souq-modern','theme-fresh-market','theme-pro-ops','redesign-v3','direction-a-v2','direction-a','direction-b','direction-c'];
+  const path=String(location.pathname||'');
+  for(let i=0;i<ids.length;i++){ const id=ids[i]; if(path.indexOf('/'+id+'/')>-1||path.endsWith('/'+id)||new RegExp('/'+id+'([/?#]|$)').test(path)) return id; }
+  if(window.MFSwitch&&typeof MFSwitch.THEME==='string'&&ids.indexOf(MFSwitch.THEME)>-1) return MFSwitch.THEME;
+  const m=path.match(/p-eb6725bbe4f4\/([^/]+)/); return (m&&ids.indexOf(m[1])>-1)?m[1]:''; }
 function registerThemeMF(){ const MF=window.MF; if(!MF||!MF.S||MF.SCR['set.theme']) return;
   const H=MF.H;
   MF.S('set.theme',{a:'settings',r:ALL_ROLES,t:['Theme','الثيم'],back:'more',noSeg:true,
@@ -459,7 +468,7 @@ function registerB(){ if(typeof screen!=='function') return;
       if(!p) return '<div class="card"><p>'+esc(Lb('No cash payments waiting','لا دفعات نقدية بانتظارك'))+'</p><p class="small muted">'+esc(Lb('When a customer chooses Pay by hand and picks you, it appears here.','عندما يختار العميل الدفع يدوياً ويحدّدك، تظهر هنا.'))+'</p></div>';
       return '<h1 style="margin:8px 0 0;font-size:22px">'+esc(Lb('Enter the 6-digit code','أدخل الرمز المكوّن من 6 أرقام'))+'</h1><p class="small muted">'+esc((p.customer&&p.customer.name)||Lb('Customer','العميل'))+' · '+moneyB(p.amount)+'</p>'+otpBoxes('','otp')+'<p class="small muted">'+esc(Lb('Sample code (preview only): ','رمز تجريبي (للمعاينة فقط): ')+(p.otp||SAMPLE_OTP))+'</p><button class="btn block" data-mfc="b-staff-ok">'+esc(Lb('Confirm received','أكّد الاستلام'))+'</button>'; }});
 
-  [['v.collect','van','v.route'],['d.collect','driver','d.route'],['k.collect','store','k.picklist'],['m.collect','admin','m.approvals']].forEach(function(x){
+  [['v.collect','van','v.route'],['a.collect','acct','a.approvals'],['m.collect','admin','m.approvals']].forEach(function(x){
     const id=x[0], role=x[1], back=x[2]; if(SC[id]) return;
     screen(id,{role:role,en:'Collect cash payment',ar:'تحصيل دفعة نقدية',nav:back,back:back,layout:'form',render:SC['s.collect']&&SC['s.collect'].render});
     wrapBScreen(back,function(html){ if(!html||html.indexOf(id)>-1) return html;
@@ -538,12 +547,12 @@ function registerC(){ if(typeof SCREENS==='undefined'||typeof R!=='function') re
       if(!p) return '<div class="card pad"><p>'+esc(Lb('No cash payments waiting','لا دفعات نقدية بانتظارك'))+'</p></div>';
       return '<h1 style="margin:8px 0 0;font-size:22px">'+esc(Lb('Enter the 6-digit code','أدخل الرمز المكوّن من 6 أرقام'))+'</h1>'+otpBoxes('','otp')+'<p class="small muted">'+esc(Lb('Sample code (preview only): ','رمز تجريبي (للمعاينة فقط): ')+(p.otp||SAMPLE_OTP))+'</p><button class="btn block" data-mfc="c-staff-ok">'+esc(Lb('Confirm received','أكّد الاستلام'))+'</button>'; }});
 
-  [['v-collect','van','v-hub'],['d-collect','driver','d-hub'],['k-collect','store','k-hub'],['m-collect','admin','m-hub']].forEach(function(x){
+  [['v-collect','van','v-hub'],['a-collect','acct','a-hub'],['m-collect','admin','m-hub']].forEach(function(x){
     const id=x[0], role=x[1], back=x[2]; if(SCREENS.some(s=>s.id===id)) return;
     const src=SCREENS.find(s=>s.id==='s-collect');
     R({id:id,role:role,nav:'more',title:['Collect cash payment','تحصيل دفعة نقدية'],kind:'form',back:back,render:src&&src.render});
   });
-  ['s-hub','v-hub','d-hub','k-hub','m-hub'].forEach(function(hid){
+  ['s-hub','v-hub','a-hub','m-hub'].forEach(function(hid){
     const sc=SCREENS.find(s=>s.id===hid); if(!sc||typeof sc.render!=='function'||sc.__mfcashCol) return;
     sc.__mfcashCol=true; const r0=sc.render; const dest=hid==='s-hub'?'s-collect':hid.replace('-hub','-collect');
     sc.render=function(){ const html=String(r0.apply(this,arguments)||''); if(html.indexOf(dest)>-1) return html;
@@ -588,5 +597,5 @@ function boot(){ css();
   bind();
 }
 boot();
-window.MFCash={assignedSalesperson,staffChoices,isLive,SAMPLE_OTP};
+window.MFCash={assignedSalesperson,staffChoices,isLive,SAMPLE_OTP,payRoles,currentThemeId,COLLECT_ROLES};
 })();
