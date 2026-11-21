@@ -2,7 +2,7 @@
 @font-face{font-family:"Alexandria";src:url(fonts/Alexandria.ttf) format("truetype");font-weight:100 900;font-display:swap}
 @font-face{font-family:"Noto Sans Arabic";src:url(fonts/NotoSansArabic.ttf) format("truetype");font-weight:100 900;font-display:swap}
 @font-face{font-family:"Inter";src:url(fonts/Inter.ttf) format("truetype");font-weight:100 900;font-display:swap}
-@font-face{font-family:"RiyalSign";src:url(fonts/riyal-sign.ttf) format("truetype");unicode-range:U+20C1}
+@font-face{font-family:"RiyalSign";src:url(fonts/riyal-sign.ttf) format("truetype");unicode-range:U+20C1;font-display:swap}
 :root{
   /* Color tokens — "Najd warmth" */
   --henna-50:#FBF1EA;--henna-100:#F5DCCB;--henna-300:#E0997A;--henna-500:#B5502A;--henna-600:#9A4020;--henna-700:#7A3017;

@@ -1,7 +1,6 @@
 /* ===== MENAFoods · Souq Modern · component treatment layer (loads after ui.css) =====
    Idea: a modern souq. Sand paper surfaces, terracotta brand, saffron-gold accents, Sadu-weave bands,
    khatam (8-point star) lattice in headers, arch (qaws) shaped icon wells, framed "stamped" cards. */
-@import url(theme-vars.css);
 @font-face{font-family:"Reem Kufi";src:url(fonts/ReemKufi-Var.ttf) format("truetype");font-weight:400 700;font-display:swap}
 .disp,h1,h2,.lt,.sec-h h2,.hero .v,.money.big,.big-c{font-family:"Reem Kufi","IBM Plex Sans Arabic","Inter",sans-serif;letter-spacing:0}
 .hero .v .money,.money.big{font-family:"Inter",sans-serif}

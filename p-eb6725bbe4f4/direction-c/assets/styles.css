@@ -1,5 +1,5 @@
 /* MENAFoods — Direction C "Role Command Hubs" — prototype styles (sample design, not production) */
-@font-face{font-family:"MF Riyal";src:url(fonts/riyal-sign.ttf) format("truetype");unicode-range:U+20C1;}
+@font-face{font-family:"MF Riyal";src:url(fonts/riyal-sign.ttf) format("truetype");unicode-range:U+20C1;;font-display:swap}
 @font-face{font-family:"MF Arabic";src:url(fonts/NotoSansArabic.ttf) format("truetype");font-weight:100 900;font-display:swap;}
 @font-face{font-family:"MF Latin";src:url(fonts/IBMPlexSans.ttf) format("truetype");font-weight:100 700;font-display:swap;}
 
