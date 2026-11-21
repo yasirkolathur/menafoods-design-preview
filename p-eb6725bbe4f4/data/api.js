@@ -19,6 +19,8 @@ const PATHS=Object.freeze(Object.assign({
   staffCustomers:'/staff/customers',   // GET ?q=  → {data:[{id,name,name_ar?,customer_number?}]}
   invoices:'/invoices',                // GET [?customer_id=] → {data:[{no,date,due,total,balance,status,lines?}]}
   payments:'/payments',                // GET [?customer_id=] → {data:[{id,ts,amount,method,invoices[]}]}
+  'payments.cash.request':'/payments/cash/request', // POST {amount,currency,invoice_ids,staff_id,staff_role,otp_target} → {request_id,status,otp_sent_to,expires_at}
+  'payments.cash.verify':'/payments/cash/verify',   // POST {request_id,otp} → {payment_id,receipt_id,status,amount,received_by,ts}
   creditNotes:'/credit-notes',         // GET [?customer_id=] → {data:[{no,invoice,amount,date,reason,reason_ar?}]}
   customerParam:'customer_id'
 },C.paths||{}));

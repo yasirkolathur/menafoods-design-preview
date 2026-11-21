@@ -259,6 +259,7 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(el&&el.dataset.act){e.preventDefault();act(el.dataset.act)}
 });
 function boot(){const d=detectLang();S.lang=d.lang;S.langSrc=d.src;parseHash();render();window.__ready=true}
+window.addEventListener('hashchange',()=>{parseHash();render();});
 window.addEventListener('DOMContentLoaded',()=>{document.fonts&&document.fonts.ready.then(boot)||boot()});
 
 /* Bidi guard: numeric ranges like 7–10 or 1–30 must not reorder inside RTL text → wrap in LTR isolates. */
