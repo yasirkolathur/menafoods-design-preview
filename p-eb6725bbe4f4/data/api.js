@@ -22,6 +22,7 @@ const PATHS=Object.freeze(Object.assign({
   'payments.cash.request':'/payments/cash/request', // POST {amount,currency,invoice_ids,staff_id,staff_role,otp_target} → {request_id,status,otp_sent_to,expires_at}
   'payments.cash.verify':'/payments/cash/verify',   // POST {request_id,otp} → {payment_id,receipt_id,status,amount,received_by,ts}
   creditNotes:'/credit-notes',         // GET [?customer_id=] → {data:[{no,invoice,amount,date,reason,reason_ar?}]}
+  catalogPreview:'/catalog/preview-data', // GET [?page=1&limit=40] → {P,CATS?,page,pages,total,has_more,...}; no params = full list
   customerParam:'customer_id'
 },C.paths||{}));
 /* Live mode turns on ONLY when
@@ -119,7 +120,8 @@ function sdkToken(force){
 const sameOrig=u=>{ try{ return new URL(u,location.href).origin===location.origin; }catch(e){ return false; } };
 /* in-flight + short memo for boot GETs so /me, catalogue and bootstrap are started once and shared */
 const inflight={}, memo={};
-const bootKey=path=>/\/(me|catalog\/preview-data|bootstrap\/[^/?]+)$/.test(path)?path:null;
+const bootKey=path=>{ try{ const u=new URL(path, 'http://local'); const clean=u.pathname; if(/\/me$/.test(clean)) return clean; if(/\/bootstrap\/[^/]+$/.test(clean)) return clean; if(/\/catalog\/preview-data$/.test(clean)) return clean+u.search; }catch(e){ const q=String(path||'').split('?'); const clean=q[0]; if(/\/me$/.test(clean)||/\/bootstrap\/[^/?]+$/.test(clean)) return clean; if(/\/catalog\/preview-data$/.test(clean)) return String(path||''); } return null; };
+function hdrs(r){ const o={}; try{ r.headers.forEach((v,k)=>{ o[String(k).toLowerCase()]=v; }); }catch(e){} return o; }
 function request(method,path,body,opt){
   opt=opt||{};
   if(!LIVE) return Promise.reject(Object.assign(new Error('sample mode: no network'),{code:'SAMPLE_MODE'}));
@@ -137,15 +139,44 @@ function request(method,path,body,opt){
     if(idem) h['Idempotency-Key']=idem;
     if(session) h['Authorization']='Bearer '+session;   /* short-lived session token from /auth/otp/verify, memory only */
     else if(tk) h['Authorization']=tk;                   /* Catalyst SDK token, same origin only */
+    if(opt.headers) Object.keys(opt.headers).forEach(k=>{ if(opt.headers[k]!=null) h[k]=opt.headers[k]; });
     return fetch(url,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),credentials:'include',cache:'no-store',signal:ctl&&ctl.signal})
      .then(r=>{ if(r.status===401&&tk&&!retried&&!session) return sdkToken(true).then(t2=>t2&&t2!==tk?send(t2,true):r); return r; })
      .finally(()=>tm&&clearTimeout(tm));
   };
+  const wrap=(r,j)=>{ const headers=hdrs(r), etag=headers.etag||headers['etag']||'', retryAfter=headers['retry-after']; return {status:r.status, headers, etag, data:j, retryAfter}; };
   const tkP=(!session&&sameOrig(url))?sdkToken(false):Promise.resolve(null);
   const run=tkP.then(tk=>send(tk,false))
-   .then(r=>r.status===204?null:r.json().catch(()=>null).then(j=>{ if(!r.ok){ const er=j&&j.error; const e=new Error((er&&er.message)||(typeof er==='string'?er:'')||('HTTP '+r.status)); e.status=r.status; e.body=j; e.code=typeof er==='string'?er:(er&&er.code)||''; e.message_ar=er&&er.message_ar; e.notEnabled=isNotEnabled(r.status,j); if(e.notEnabled&&!opt.quiet) notice(path,e); throw e; } if(mk) memo[mk]={t:Date.now(),j}; return j; }));
-  if(mk) inflight[mk]=run.finally(()=>{ if(inflight[mk]===run) delete inflight[mk]; });
+   .then(r=>{
+     if(r.status===304){ const w=wrap(r,null); if(opt.allow304||opt.meta) return w; const e=new Error('HTTP 304'); e.status=304; e.headers=w.headers; e.etag=w.etag; throw e; }
+     if(r.status===204) return (opt.meta||opt.allow304)?wrap(r,null):null;
+     return r.json().catch(()=>null).then(j=>{
+       if(!r.ok){ const er=j&&j.error; const e=new Error((er&&er.message)||(typeof er==='string'?er:'')||('HTTP '+r.status)); e.status=r.status; e.body=j; e.code=typeof er==='string'?er:(er&&er.code)||''; e.message_ar=er&&er.message_ar; e.notEnabled=isNotEnabled(r.status,j); e.headers=hdrs(r); e.retryAfter=e.headers['retry-after']; if(e.notEnabled&&!opt.quiet) notice(path,e); throw e; }
+       if(mk) memo[mk]={t:Date.now(),j};
+       return (opt.meta||opt.allow304)?wrap(r,j):j;
+     });
+   });
+  if(mk){ inflight[mk]=run; run.finally(()=>{ if(inflight[mk]===run) delete inflight[mk]; }).catch(()=>{}); }
   return run;
+}
+/* catalogue pages: ETag + body kept in sessionStorage; 304 reuses the stored copy */
+const CAT_SK=(page,limit)=>'mfapi-cat:p'+(page||0)+'l'+(limit||0);
+function catRead(page,limit){ try{ return JSON.parse(sessionStorage.getItem(CAT_SK(page,limit))||'null'); }catch(e){ return null; } }
+function catWrite(page,limit,etag,body){ try{ sessionStorage.setItem(CAT_SK(page,limit),JSON.stringify({etag,body,t:Date.now()})); }catch(e){} }
+function unwrapCat(j){ if(!j||typeof j!=='object') return j; if(j.P) return j; if(j.data&&j.data.P) return j.data; return j.data||j; }
+function getCatalog(page,limit,opt){
+  opt=opt||{};
+  const base=PATHS.catalogPreview||PATHS.catalog||'/catalog/preview-data';
+  const q=(page!=null&&limit!=null)?('?page='+encodeURIComponent(page)+'&limit='+encodeURIComponent(Math.min(100,Number(limit)||40))):'';
+  const cached=catRead(page||0,limit||0);
+  const headers={}; if(cached&&cached.etag) headers['If-None-Match']=cached.etag;
+  return request('GET',base+q,undefined,{quiet:opt.quiet!==false, headers, allow304:true, nomemo:!!opt.nomemo||(page>1)}).then(res=>{
+    if(res&&res.status===304&&cached&&cached.body) return {status:304, etag:cached.etag, data:cached.body, fromCache:true, headers:res.headers||{}};
+    const data=unwrapCat(res&&Object.prototype.hasOwnProperty.call(res,'data')?res.data:res);
+    const etag=(res&&res.etag)||'';
+    if(data&&data.P) catWrite(page||data.page||0, limit||data.limit||0, etag, data);
+    return {status:(res&&res.status)||200, etag, data, fromCache:false, headers:(res&&res.headers)||{}};
+  });
 }
 
 /* ---------- outbox (live only) ---------- */
@@ -244,7 +275,7 @@ function savePrefs(p){
   try{ if(sessionStorage.getItem('mfapi-prefs-off')) return Promise.resolve(null); }catch(e){}
   return request('PUT','/me/preferences',p||{},{quiet:true}).catch(e=>{ if(e&&e.notEnabled){ try{ sessionStorage.setItem('mfapi-prefs-off','1'); }catch(x){} } return null; });
 }
-window.MFAPI={ paths:PATHS, savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; Object.keys(memo).forEach(k=>{ if(/\/me$/.test(k)) delete memo[k]; }); }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+window.MFAPI={ paths:PATHS, savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; Object.keys(memo).forEach(k=>{ if(/\/me$/.test(k)) delete memo[k]; }); }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, getCatalog, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
 /* start independent boot reads as soon as this file runs so they overlap the remaining scripts */
-if(LIVE){ Promise.resolve().then(()=>{ request('GET','/me',undefined,{quiet:true}).then(j=>{ try{ sessionStorage.setItem('mfapi-me-cache',JSON.stringify({t:Date.now(),j})); }catch(e){} },()=>{}); request('GET','/catalog/preview-data',undefined,{quiet:true}).catch(()=>{}); }); }
+if(LIVE){ Promise.resolve().then(()=>{ request('GET','/me',undefined,{quiet:true}).then(j=>{ try{ sessionStorage.setItem('mfapi-me-cache',JSON.stringify({t:Date.now(),j})); }catch(e){} },()=>{}); getCatalog(1,40,{quiet:true}).catch(()=>{}); }); }
 })();

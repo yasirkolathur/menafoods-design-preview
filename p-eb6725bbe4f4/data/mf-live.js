@@ -34,14 +34,63 @@ L.ui.catLoading=true;
 
 const norm=(id,p)=>{ const en=nz(p.en,nz(p.name,id)); const pk=Array.isArray(p.pk)?p.pk:[p.pk,p.pk]; const u=Array.isArray(p.u)?p.u:['',''];
   const pr=(typeof p.pr==='number'&&isFinite(p.pr)&&p.pr>0)?p.pr:null;     /* 0 / missing = price not available, never guessed */
-  const st=['in','low','out'].includes(p.stock)?p.stock:'out';            /* unknown stock is never shown as available */
+  const st=['in','low','out','unknown'].includes(p.stock)?p.stock:'out';   /* 'unknown' stays neutral — not in-stock, not out-of-stock */
   return Object.assign({},p,{id,en:String(en),ar:String(nz(p.ar,en)),pk:[nz(pk[0],'—'),nz(pk[1],nz(pk[0],'—'))],u:[nz(u[0],''),nz(u[1],nz(u[0],''))],pr,stock:st,g:nz(p.g,'box'),cat:nz(p.cat,'other'),moq:(p.moq>0?p.moq:1)}); };
-API.get('/catalog/preview-data').then(j=>{ const d=(j&&j.data&&j.data.P)?j.data:j; if(!d||!d.P) throw new Error('bad shape');
+const catPath=()=>(API.paths&&(API.paths.catalogPreview||API.paths.catalog||API.paths['catalog.preview']))||'/catalog/preview-data';
+const applyCats=arr=>{ if(!Array.isArray(arr)) return; CATS.length=0;
+  arr.forEach(c=>{ if(!Array.isArray(c)) return; const nm=Array.isArray(c[2])?c[2]:[c[2],c[2]]; const en=nz(nm[0],String(c[0])); CATS.push([String(c[0]),nz(c[1],'box'),[en,nz(nm[1],en)],c[3]||null]); });
+  const known=new Set(CATS.map(c=>c[0])); if(Object.values(RAW).some(p=>p&&!known.has(p.cat))) CATS.push(['other','box',['Other','أخرى'],null]); };
+const applyCat=(d,opts)=>{ opts=opts||{}; if(!d||!d.P||typeof d.P!=='object') return false;
   Object.entries(d.P).forEach(([id,p])=>{ if(p&&typeof p==='object') RAW[id]=norm(id,p); });
-  (d.CATS||[]).forEach(c=>{ if(!Array.isArray(c)) return; const nm=Array.isArray(c[2])?c[2]:[c[2],c[2]]; const en=nz(nm[0],String(c[0])); CATS.push([String(c[0]),nz(c[1],'box'),[en,nz(nm[1],en)],c[3]||null]); });
-  const known=new Set(CATS.map(c=>c[0])); if(Object.values(RAW).some(p=>!known.has(p.cat))) CATS.push(['other','box',['Other','أخرى'],null]);
-  L.ui.catLoading=false; API.catalogCount=Object.keys(RAW).length; prune(); API.markReady('shop'); if(MF.booted) L.rr();
-}).catch(e=>{ L.ui.catLoading=false; L.ui.catError=e.status===401?'auth':'err'; API.markReady('shop'); if(MF.booted) L.rr(); });
+  if(opts.cats) applyCats(d.CATS||[]);
+  L.ui.catMeta={age_s:d.age_s, stale:!!d.stale, build_id:d.build_id, total:d.total, pages:d.pages, note:d.note, source:d.source, ordering_disabled:!!d.ordering_disabled};
+  L.ui.orderingDisabled=!!d.ordering_disabled;
+  API.catalogCount=Object.keys(RAW).length; prune(); return true; };
+const needMore=d=>{ if(!d) return false; const got=Object.keys(d.P||{}).length, total=Number(d.total);
+  if(d.has_more||d.next_page) return true; if(isFinite(total)&&total>got) return true;
+  const pages=Number(d.pages); return isFinite(pages)&&pages>1; };
+const pages100=d=>{ const total=Number(d.total); if(isFinite(total)&&total>0) return Math.max(1,Math.ceil(total/100));
+  const pages=Number(d.pages), lim=Number(d.limit); if(isFinite(pages)&&pages>0){ if(lim===100) return pages; if(isFinite(lim)&&lim>0) return Math.max(1,Math.ceil((pages*lim)/100)); return pages; }
+  if(d.has_more||d.next_page) return Math.max(2,Number(d.next_page)||2); return 1; };
+const parseRetry=v=>{ if(v==null||v==='') return 5; const n=Number(v); if(isFinite(n)&&n>=0) return n; const ts=Date.parse(v); return isFinite(ts)?Math.max(0,Math.round((ts-Date.now())/1000)):5; };
+function fetchCatPages(from,to,limit,conc){
+  let next=from, inflight=0, last=to;
+  return new Promise(resolve=>{
+    const kick=()=>{
+      while(inflight<conc && next<=last){
+        const page=next++; inflight++;
+        API.getCatalog(page,limit,{quiet:true,nomemo:true}).then(r=>{
+          const d=r&&r.data; if(d&&d.P){ applyCat(d,{cats:false}); if(d.has_more&&d.next_page&&Number(d.next_page)>last) last=Number(d.next_page); if(MF.booted) L.rr(); }
+        },e=>{ if(e&&(e.status===503||/catalogue_daily_cap|catalogue_unavailable/.test(e.code||''))) scheduleCatRetry(()=>fetchCatPages(page,last,limit,conc)); }).finally(()=>{ inflight--; if(next>last&&inflight===0) resolve(); else kick(); });
+      }
+      if(last<from) resolve();
+    };
+    kick();
+  });
+}
+function scheduleCatRetry(fn){ const ms=Math.min(60000,Math.max(500,(L.ui.catRetryAfter||5)*1000)); clearTimeout(L.ui.catRetryT); L.ui.catRetryT=setTimeout(()=>{ try{ fn(); }catch(e){} },ms); }
+function onCatErr(e){
+  const code=(e&&(e.code||(e.body&&e.body.error&&(e.body.error.code||e.body.error))))||'';
+  const cap=/catalogue_daily_cap/.test(code), down=e&&e.status===503||/catalogue_unavailable/.test(code);
+  if(e&&e.status===401){ L.ui.catLoading=false; L.ui.catError='auth'; API.markReady('shop'); if(MF.booted) L.rr(); return; }
+  if(cap||down||(e&&e.status===503)){
+    L.ui.catError=cap?'cap':'unavail'; L.ui.catRetryAfter=parseRetry(e&&(e.retryAfter||(e.headers&&e.headers['retry-after'])));
+    L.ui.catLoading=false; API.markReady('shop'); if(MF.booted) L.rr();
+    scheduleCatRetry(()=>{ L.ui.catLoading=true; L.ui.catError=null; if(MF.booted) L.rr(); loadCat(); }); return;
+  }
+  L.ui.catLoading=false; L.ui.catError='err'; API.markReady('shop'); if(MF.booted) L.rr(); }
+function loadCat(){
+  L.ui.catLoading=true;
+  const get=API.getCatalog||((page,limit,o)=>API.get((catPath())+((page!=null&&limit!=null)?('?page='+page+'&limit='+limit):'')).then(j=>({status:200,data:(j&&j.data&&j.data.P)?j.data:j})));
+  get(1,40,{quiet:true}).then(r=>{
+    const d=r&&r.data; if(!d||!d.P) throw new Error('bad shape');
+    applyCat(d,{cats:true}); L.ui.catLoading=false; L.ui.catError=null; API.markReady('shop'); if(MF.booted) L.rr();
+    if(!needMore(d)) return;
+    L.ui.catMore=true;
+    return fetchCatPages(1,pages100(d),100,2).then(()=>{ L.ui.catMore=false; if(MF.booted) L.rr(); });
+  }).catch(onCatErr);
+}
+loadCat();
 
 /* 6. hide demo-only things */
 L.sampleTag=()=>'';
@@ -50,8 +99,30 @@ L.post.push(c=>{
   const f=document.querySelector('.foot'); if(f) f.innerHTML=`${I('info',14)}<span>${t('Development preview · live catalogue from Zoho · some actions are not enabled yet','معاينة التطوير · كتالوج حي من زوهو · بعض الإجراءات غير مفعّلة بعد')}</span>`;
   document.querySelectorAll('[data-act="reset"],[data-act="ff"],[data-act="offline"],.lv-or').forEach(b=>{ const r=b.closest('.row')||b; r.remove(); });
   document.querySelectorAll('.pill.neu').forEach(p=>{ if(/sample|تجريبي/i.test(p.textContent)) p.remove(); });
-  if(['b.catalog','b.search','b.home'].includes(c.id)&&(L.ui.catLoading||L.ui.catError)){ const m=document.querySelector('#main'); if(m&&!m.querySelector('.lv-catst')){ const p=document.createElement('p'); p.className='why lv-catst'; p.setAttribute('role','status'); p.textContent=L.ui.catLoading?t('Loading the catalogue…','جارٍ تحميل الكتالوج…'):L.ui.catError==='auth'?t('Sign in to see the catalogue.','سجّل الدخول لعرض الكتالوج.'):t('The catalogue could not be loaded. Pull to refresh or try again later.','تعذّر تحميل الكتالوج. حاول مرة أخرى لاحقًا.'); m.insertBefore(p,m.firstChild); } }
+  const m=document.querySelector('#main');
+  if(m&&['b.catalog','b.search','b.home','b.product','b.cart','b.checkout'].includes(c.id)){
+    if((L.ui.catLoading||L.ui.catError||L.ui.catMore)&&!m.querySelector('.lv-catst')){
+      const p=document.createElement('p'); p.className='why lv-catst'; p.setAttribute('role','status');
+      const err=L.ui.catError;
+      p.textContent=L.ui.catLoading?t('Loading the catalogue…','جارٍ تحميل الكتالوج…'):err==='auth'?t('Sign in to see the catalogue.','سجّل الدخول لعرض الكتالوج.'):err==='cap'?t('The daily catalogue limit was reached. We’ll try again shortly.','تم بلوغ الحد اليومي للكتالوج. سنحاول مرة أخرى بعد قليل.'):err==='unavail'?t('The catalogue is temporarily unavailable. We’ll try again shortly.','الكتالوج غير متاح مؤقتًا. سنحاول مرة أخرى بعد قليل.'):err?t('The catalogue could not be loaded. Pull to refresh or try again later.','تعذّر تحميل الكتالوج. حاول مرة أخرى لاحقًا.'):L.ui.catMore?t('Loading more products…','جارٍ تحميل المزيد من المنتجات…'):'';
+      if(err&&err!=='auth'){ const b=document.createElement('button'); b.type='button'; b.className='ib'; b.setAttribute('data-act','catretry'); b.textContent=t('Try again','حاول مرة أخرى'); p.appendChild(document.createTextNode(' ')); p.appendChild(b); }
+      m.insertBefore(p,m.firstChild);
+    }
+    if(L.ui.orderingDisabled&&!m.querySelector('.lv-catupd')){
+      const p=document.createElement('p'); p.className='why lv-catupd'; p.setAttribute('role','status');
+      p.textContent=t('Catalogue is updating. Ordering is paused for a moment.','يجري تحديث الكتالوج. يُوقف الطلب للحظة.');
+      m.insertBefore(p,m.firstChild);
+      m.querySelectorAll('.stp, [data-act="place"], .dock .btn, .act .stp').forEach(x=>{ try{ x.setAttribute('aria-disabled','true'); if(x.tagName==='BUTTON'||x.classList.contains('btn')){ x.disabled=true; } }catch(e){} });
+    }
+    const age=L.ui.catMeta&&L.ui.catMeta.age_s;
+    if(age!=null&&age!==''&&!m.querySelector('.lv-catage')&&['b.catalog','b.search','b.home'].includes(c.id)){
+      const n=Math.max(0,Math.round(Number(age)/60)); const p=document.createElement('p'); p.className='s lv-catage'; p.style.cssText='padding:0 16px 10px;opacity:.7';
+      p.textContent=n<=0?t('Updated just now','تم التحديث الآن'):t(`Updated ${n} min ago`,`تم التحديث قبل ${n} د`);
+      m.appendChild(p);
+    }
+  }
 });
+ACT.catretry=()=>{ clearTimeout(L.ui.catRetryT); L.ui.catError=null; L.ui.catLoading=true; if(MF.booted) L.rr(); loadCat(); };
 
 /* real sign-in: Catalyst session cookie (from /app/) or OTP through the gateway; no sample accounts, no sample code */
 L.ui.meTried=false;
@@ -122,7 +193,9 @@ const GRANT={viewer:'b.home b.catalog b.search b.product b.orders b.order b.trac
   cfin:'b.finance b.invoices b.invoice b.pay b.receipt b.statement b.credit b.hold b.returns b.orders b.order b.track cc.dispute cc.new cc.tickets cc.ticket'};
 Object.entries(GRANT).forEach(([r,ids])=>{ ids.split(' ').concat(COMMON).forEach(id=>{ const d=MF.SCR[id]; if(d&&Array.isArray(d.r)&&!d.r.includes(r)) d.r.push(r); }); });
 ['viewer','recv'].forEach(r=>{});
-const add1=L.addCart; L.addCart=(sku,d,silent)=>{ const r=MF.C&&MF.C.role; if(['viewer','recv'].includes(r)&&d>0){ L.toast(t('View-only access · ask your account owner to order','صلاحية عرض فقط · اطلب من مالك الحساب إجراء الطلب')); return; } return add1(sku,d,silent); };
+const add1=L.addCart; L.addCart=(sku,d,silent)=>{ if(L.ui.orderingDisabled&&d>0){ L.toast(t('Catalogue is updating. Ordering is paused for a moment.','يجري تحديث الكتالوج. يُوقف الطلب للحظة.')); return; } const r=MF.C&&MF.C.role; if(['viewer','recv'].includes(r)&&d>0){ L.toast(t('View-only access · ask your account owner to order','صلاحية عرض فقط · اطلب من مالك الحساب إجراء الطلب')); return; } return add1(sku,d,silent); };
+{ const pl0=ACT.place; if(typeof pl0==='function') ACT.place=(...a)=>{ if(L.ui.orderingDisabled){ L.toast(t('Catalogue is updating. Ordering is paused for a moment.','يجري تحديث الكتالوج. يُوقف الطلب للحظة.')); return; } return pl0(...a); }; }
+
 /* names come from /v1/me, never from the sample cast */
 const meName=(ar)=>{ const m=L.S().me||{}; const u=m.user||m; return nz(ar?nz(u.name_ar,u.name):u.name,''); };
 const acctName=(ar)=>{ const m=L.S().me||{}; const a=m.account||{}; return nz(ar?nz(a.name_ar,a.name):a.name,''); };
