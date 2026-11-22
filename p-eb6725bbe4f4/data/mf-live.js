@@ -40,12 +40,12 @@ const catPath=()=>(API.paths&&(API.paths.catalogPreview||API.paths.catalog||API.
 const applyCats=arr=>{ if(!Array.isArray(arr)) return; CATS.length=0;
   arr.forEach(c=>{ if(!Array.isArray(c)) return; const nm=Array.isArray(c[2])?c[2]:[c[2],c[2]]; const en=nz(nm[0],String(c[0])); CATS.push([String(c[0]),nz(c[1],'box'),[en,nz(nm[1],en)],c[3]||null]); });
   const known=new Set(CATS.map(c=>c[0])); if(Object.values(RAW).some(p=>p&&!known.has(p.cat))) CATS.push(['other','box',['Other','أخرى'],null]); };
-const applyCat=(d,opts)=>{ opts=opts||{}; if(!d||!d.P||typeof d.P!=='object') return false;
-  Object.entries(d.P).forEach(([id,p])=>{ if(p&&typeof p==='object') RAW[id]=norm(id,p); });
+const applyCat=(d,opts)=>{ opts=opts||{}; if(!d||!d.P||typeof d.P!=='object') return {ok:false,added:0};
+  let added=0; Object.entries(d.P).forEach(([id,p])=>{ if(p&&typeof p==='object'){ if(!RAW[id]) added++; RAW[id]=norm(id,p); } });
   if(opts.cats) applyCats(d.CATS||[]);
   L.ui.catMeta={age_s:d.age_s, stale:!!d.stale, build_id:d.build_id, total:d.total, pages:d.pages, note:d.note, source:d.source, ordering_disabled:!!d.ordering_disabled};
   L.ui.orderingDisabled=!!d.ordering_disabled;
-  API.catalogCount=Object.keys(RAW).length; prune(); return true; };
+  API.catalogCount=Object.keys(RAW).length; prune(); return {ok:true,added}; };
 const needMore=d=>{ if(!d) return false; const got=Object.keys(d.P||{}).length, total=Number(d.total);
   if(d.has_more||d.next_page) return true; if(isFinite(total)&&total>got) return true;
   const pages=Number(d.pages); return isFinite(pages)&&pages>1; };
@@ -53,6 +53,69 @@ const pages100=d=>{ const total=Number(d.total); if(isFinite(total)&&total>0) re
   const pages=Number(d.pages), lim=Number(d.limit); if(isFinite(pages)&&pages>0){ if(lim===100) return pages; if(isFinite(lim)&&lim>0) return Math.max(1,Math.ceil((pages*lim)/100)); return pages; }
   if(d.has_more||d.next_page) return Math.max(2,Number(d.next_page)||2); return 1; };
 const parseRetry=v=>{ if(v==null||v==='') return 5; const n=Number(v); if(isFinite(n)&&n>=0) return n; const ts=Date.parse(v); return isFinite(ts)?Math.max(0,Math.round((ts-Date.now())/1000)):5; };
+/* first ~60 product cards; more on scroll. list screens update #lres, not a full 1,100-row relayout */
+const CAT_WIN=60; L.ui.catShown=L.ui.catShown||CAT_WIN;
+let catFiltK='', catPaintChrome=false, catRaf=0;
+const catFiltKey=()=>{ const o=L.ui.cat||{}; return [o.cat||'',o.q||'',(o.f||[]).join(','),o.sort||'',L.ui.sq||''].join('|'); };
+const safeFilter=(o)=>{ o=o||{}; const f=Array.isArray(o.f)?o.f:[]; const q=String(o.q||'').toLowerCase();
+  let ids=[]; try{ ids=Object.keys(RAW); }catch(e){ return []; }
+  let B; try{ B=new Set((L.S().orders||[]).flatMap(ord=>Object.keys((ord&&ord.items)||{}))); }catch(e){ B=new Set(); }
+  const favs=(()=>{ try{ return L.S().favs||[]; }catch(e){ return []; } })();
+  ids=ids.filter(k=>{ const p=RAW[k]; if(!p) return false; try{
+    if(o.cat&&o.cat!=='all'&&p.cat!==o.cat) return false;
+    if(f.indexOf('in')>=0&&p.stock==='out') return false;
+    if(f.indexOf('bought')>=0&&!B.has(k)) return false;
+    if(f.indexOf('fav')>=0&&favs.indexOf(k)<0) return false;
+    if(f.indexOf('cold')>=0&&['dairy','frozen'].indexOf(p.cat)<0) return false;
+    if(q){ const en=String(p.en||'').toLowerCase(), ar=String(p.ar||''), cat=String(p.cat||''); if(!(en.indexOf(q)>=0||ar.indexOf(o.q)>=0||('mf-'+k).indexOf(q)>=0||cat.indexOf(q)>=0)) return false; }
+    return true;
+  }catch(e){ return false; } });
+  try{ if(o.sort==='lo') ids.sort((a,b)=>(RAW[a].pr||0)-(RAW[b].pr||0)); else if(o.sort==='hi') ids.sort((a,b)=>(RAW[b].pr||0)-(RAW[a].pr||0)); else if(o.sort==='az') ids.sort((a,b)=>String((MF.pn&&MF.pn(RAW[a]))||RAW[a].en||a).localeCompare(String((MF.pn&&MF.pn(RAW[b]))||RAW[b].en||b))); }catch(e){}
+  return ids; };
+const safeList=(o)=>{ o=o||L.ui.cat||{f:[],sort:'rel',q:''}; const k=catFiltKey(); if(k!==catFiltK){ catFiltK=k; L.ui.catShown=CAT_WIN; }
+  const ids=safeFilter(o), cap=Math.max(CAT_WIN,L.ui.catShown||CAT_WIN), vis=ids.slice(0,cap);
+  L.ui.catTotal=ids.length; L.ui.catHasMore=ids.length>vis.length;
+  if(!ids.length) return (MF.H&&MF.H.empty)?MF.H.empty('box',o.q?t(`No matches for “${esc(o.q)}”`,`لا نتائج لـ «${esc(o.q)}»`):t('Nothing matches these filters','لا شيء يطابق هذه الفلاتر'),t('Try a shorter word, clear a filter, or ask your salesperson to source it.','جرّب كلمة أقصر أو أزل فلترًا أو اطلب من مندوبك توفيره.')):'';
+  const cards=vis.map(id=>{ try{ return (MF.pcard&&MF.pcard(id))||''; }catch(e){ return ''; } }).join('');
+  return `<p class="note" role="status">${t(`${ids.length} products · prices exclude VAT`,`${ids.length} منتجًا · الأسعار قبل الضريبة`)}</p><div class="pgrid" id="lv-pgrid" data-shown="${vis.length}" data-total="${ids.length}">${cards}</div>`; };
+function catNeedMore(){ if(!L.ui.catHasMore||L.ui._catMoreLock) return; const grid=document.getElementById('lv-pgrid')||document.querySelector('#lres .pgrid'); const last=grid&&grid.querySelector('.card:last-child'); if(last){ const r=last.getBoundingClientRect(), vh=window.innerHeight||900; if(r.top>vh+160) return; } L.ui._catMoreLock=true; L.ui.catShown=(L.ui.catShown||CAT_WIN)+CAT_WIN; flushCatPaint(true); L.ui._catMoreLock=false; }
+function catOnScroll(){ const el=document.scrollingElement||document.documentElement; const top=window.scrollY||el.scrollTop||0; const h=window.innerHeight; const sh=Math.max(el.scrollHeight||0,document.body&&document.body.scrollHeight||0); if(sh-top-h<480) catNeedMore(); }
+function attachCatScroll(){ const grid=document.getElementById('lv-pgrid')||document.querySelector('#lres .pgrid'); if(!grid) return;
+  if(!L.ui._catScrollBound){ L.ui._catScrollBound=true; try{ window.addEventListener('scroll',catOnScroll,{passive:true,capture:true}); }catch(e){} }
+  const main=document.getElementById('main'); if(main&&!main.dataset.lvScroll){ main.dataset.lvScroll='1'; try{ main.addEventListener('scroll',catOnScroll,{passive:true}); }catch(e){} }
+  if(grid.dataset.lvScroll==='1') return; grid.dataset.lvScroll='1';
+  if(window.IntersectionObserver){ let sen=grid.parentNode&&grid.parentNode.querySelector('.lv-catsen'); if(!sen){ sen=document.createElement('div'); sen.className='lv-catsen'; sen.setAttribute('aria-hidden','true'); sen.style.cssText='height:1px;'; grid.parentNode&&grid.parentNode.appendChild(sen); } try{ new IntersectionObserver(xs=>{ if(xs.some(x=>x.isIntersecting)) catNeedMore(); },{root:null,rootMargin:'120px'}).observe(sen); }catch(e){} }
+}
+function flushCatPaint(fromScroll){
+  catRaf=0; const chrome=catPaintChrome; catPaintChrome=false;
+  const id=MF.C&&MF.C.id, list=id==='b.catalog'||id==='b.search', tgt=document.getElementById('lres');
+  try{
+    if(!chrome&&tgt&&list){
+      if(id==='b.catalog') tgt.innerHTML=safeList(L.ui.cat||{f:[],sort:'rel',q:''});
+      else if(id==='b.search'&&(L.ui.sq||'')) tgt.innerHTML=safeList({f:[],sort:'rel',q:L.ui.sq});
+      attachCatScroll(); return;
+    }
+    if(MF.booted) L.rr();
+    attachCatScroll();
+  }catch(e){ try{ console.warn('[mf-live] catalog paint',e&&e.message); }catch(x){} }
+}
+function scheduleCatPaint(opts){ opts=opts||{}; if(opts.chrome) catPaintChrome=true; if(opts.now){ if(catRaf){ cancelAnimationFrame(catRaf); catRaf=0; } flushCatPaint(); return; } if(catRaf) return; catRaf=requestAnimationFrame(()=>flushCatPaint()); }
+/* cap theme pcard during a full-screen render so 1,100 cards are never built at once */
+const pcard0=MF.pcard; if(typeof pcard0==='function'){ MF.pcard=function(id){ const cap=L.ui._catCap; if(cap!=null){ L.ui._catN=(L.ui._catN||0)+1; if(L.ui._catN>cap) return ''; } try{ return pcard0(id); }catch(e){ return ''; } }; }
+['b.catalog','b.search'].forEach(id=>{ const d=MF.SCR[id]; if(!d||typeof d.render!=='function') return;
+  const r0=d.render.bind(d);
+  d.render=function(c){ const k=catFiltKey(); if(k!==catFiltK){ catFiltK=k; L.ui.catShown=CAT_WIN; } L.ui._catCap=Math.max(CAT_WIN,L.ui.catShown||CAT_WIN); L.ui._catN=0;
+    try{ return r0(c); }catch(e){ try{ console.warn('[mf-live] '+id+' render',e&&e.message); }catch(x){}
+      if(id==='b.catalog'){ const o=L.ui.cat||{f:[],sort:'rel',q:''}; o.cat=(typeof L.qp==='function'&&L.qp('cat'))||o.cat||'all';
+        const tabs=`<div class="seg" role="group">${(CATS||[]).map(cc=>`<a href="${MF.href?MF.href('b.catalog',{cat:cc[0]}):('#/b.catalog?cat='+cc[0])}">${esc((cc[2]&&cc[2][0])||cc[0])}</a>`).join('')}</div>`;
+        return tabs+`<div id="lres">${safeList(o)}</div>`; }
+      return `<div id="lres">${safeList({f:[],sort:'rel',q:L.ui.sq||''})}</div>`; }
+    finally{ L.ui._catCap=null; } };
+});
+if(L.liveFn){ const cat0=L.liveFn.cat, sr0=L.liveFn.search;
+  L.liveFn.cat=v=>{ L.ui.cat=L.ui.cat||{f:[],sort:'rel',q:''}; L.ui.cat.q=v; return safeList(L.ui.cat); };
+  L.liveFn.search=v=>{ L.ui.sq=v; return v?safeList({f:[],sort:'rel',q:v}):(sr0?sr0(v):safeList({f:[],sort:'rel',q:''})); };
+}
 function fetchCatPages(from,to,limit,conc){
   let next=from, inflight=0, last=to;
   return new Promise(resolve=>{
@@ -60,7 +123,7 @@ function fetchCatPages(from,to,limit,conc){
       while(inflight<conc && next<=last){
         const page=next++; inflight++;
         API.getCatalog(page,limit,{quiet:true,nomemo:true}).then(r=>{
-          const d=r&&r.data; if(d&&d.P){ applyCat(d,{cats:false}); if(d.has_more&&d.next_page&&Number(d.next_page)>last) last=Number(d.next_page); if(MF.booted) L.rr(); }
+          const d=r&&r.data; if(d&&d.P){ const a=applyCat(d,{cats:false}); if(d.has_more&&d.next_page&&Number(d.next_page)>last) last=Number(d.next_page); if(a&&a.added) scheduleCatPaint(); }
         },e=>{ if(e&&(e.status===503||/catalogue_daily_cap|catalogue_unavailable/.test(e.code||''))) scheduleCatRetry(()=>fetchCatPages(page,last,limit,conc)); }).finally(()=>{ inflight--; if(next>last&&inflight===0) resolve(); else kick(); });
       }
       if(last<from) resolve();
@@ -72,22 +135,23 @@ function scheduleCatRetry(fn){ const ms=Math.min(60000,Math.max(500,(L.ui.catRet
 function onCatErr(e){
   const code=(e&&(e.code||(e.body&&e.body.error&&(e.body.error.code||e.body.error))))||'';
   const cap=/catalogue_daily_cap/.test(code), down=e&&e.status===503||/catalogue_unavailable/.test(code);
-  if(e&&e.status===401){ L.ui.catLoading=false; L.ui.catError='auth'; API.markReady('shop'); if(MF.booted) L.rr(); return; }
+  if(e&&e.status===401){ L.ui.catLoading=false; L.ui.catError='auth'; API.markReady('shop'); scheduleCatPaint({chrome:true,now:true}); return; }
   if(cap||down||(e&&e.status===503)){
     L.ui.catError=cap?'cap':'unavail'; L.ui.catRetryAfter=parseRetry(e&&(e.retryAfter||(e.headers&&e.headers['retry-after'])));
-    L.ui.catLoading=false; API.markReady('shop'); if(MF.booted) L.rr();
-    scheduleCatRetry(()=>{ L.ui.catLoading=true; L.ui.catError=null; if(MF.booted) L.rr(); loadCat(); }); return;
+    L.ui.catLoading=false; API.markReady('shop'); scheduleCatPaint({chrome:true,now:true});
+    scheduleCatRetry(()=>{ L.ui.catLoading=true; L.ui.catError=null; scheduleCatPaint({chrome:true,now:true}); loadCat(); }); return;
   }
-  L.ui.catLoading=false; L.ui.catError='err'; API.markReady('shop'); if(MF.booted) L.rr(); }
+  L.ui.catLoading=false; L.ui.catError='err'; API.markReady('shop'); scheduleCatPaint({chrome:true,now:true}); }
 function loadCat(){
   L.ui.catLoading=true;
   const get=API.getCatalog||((page,limit,o)=>API.get((catPath())+((page!=null&&limit!=null)?('?page='+page+'&limit='+limit):'')).then(j=>({status:200,data:(j&&j.data&&j.data.P)?j.data:j})));
   get(1,40,{quiet:true}).then(r=>{
     const d=r&&r.data; if(!d||!d.P) throw new Error('bad shape');
-    applyCat(d,{cats:true}); L.ui.catLoading=false; L.ui.catError=null; API.markReady('shop'); if(MF.booted) L.rr();
+    applyCat(d,{cats:true}); L.ui.catLoading=false; L.ui.catError=null; API.markReady('shop'); scheduleCatPaint({chrome:true,now:true});
     if(!needMore(d)) return;
     L.ui.catMore=true;
-    return fetchCatPages(1,pages100(d),100,2).then(()=>{ L.ui.catMore=false; if(MF.booted) L.rr(); });
+    /* remaining items at limit=100. Item 41 sits on page 1 of that size, so we fetch 1..pages, skip ids already merged, and do not block first paint. */
+    return fetchCatPages(1,pages100(d),100,2).then(()=>{ L.ui.catMore=false; scheduleCatPaint({chrome:true,now:true}); });
   }).catch(onCatErr);
 }
 loadCat();
@@ -120,6 +184,7 @@ L.post.push(c=>{
       p.textContent=n<=0?t('Updated just now','تم التحديث الآن'):t(`Updated ${n} min ago`,`تم التحديث قبل ${n} د`);
       m.appendChild(p);
     }
+    if(['b.catalog','b.search'].includes(c.id)) attachCatScroll();
   }
 });
 ACT.catretry=()=>{ clearTimeout(L.ui.catRetryT); L.ui.catError=null; L.ui.catLoading=true; if(MF.booted) L.rr(); loadCat(); };
