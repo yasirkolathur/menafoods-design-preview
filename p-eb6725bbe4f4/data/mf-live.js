@@ -55,16 +55,23 @@ L.post.push(c=>{
 
 /* real sign-in: Catalyst session cookie (from /app/) or OTP through the gateway; no sample accounts, no sample code */
 L.ui.meTried=false;
+const ME_K='mfapi-me-cache';
+function writeMeCache(j){ if(!j) return; try{ sessionStorage.setItem(ME_K,JSON.stringify({t:Date.now(),j})); }catch(e){} }
+function readMeCache(){ try{ const x=JSON.parse(sessionStorage.getItem(ME_K)||'null'); if(x&&x.j&&Date.now()-x.t<30*60*1000) return x.j; }catch(e){} return null; }
+function clearMeCache(){ try{ sessionStorage.removeItem(ME_K); }catch(e){} }
+let meP=null;
+function getMe(){ if(meP) return meP; meP=API.get('/me').then(j=>{ writeMeCache(j); return j; }).finally(()=>{ meP=null; }); return meP; }
+
 ACT.otp=()=>{ L.clearBad(); const ph=L.val('phone').replace(/\D/g,''); if(!/^5\d{8}$/.test(ph)){ L.bad('phone',t('Enter 9 digits starting with 5','أدخل 9 أرقام تبدأ بـ 5')); L.focusBad(); return; }
   L.ui.busy=true; L.rr();
   API.request('POST','/auth/otp/request',{mobile:'+966'+ph,purpose:'login'}).then(j=>{ const d=(j&&j.data)||j||{}; L.ui.busy=false; L.ui.otp=ph; L.ui.ch=d.challenge_id; L.rr(); setTimeout(()=>{ const o=document.querySelector('[name=code]'); o&&o.focus(); },50); },
    e=>{ L.ui.busy=false; L.rr(); if(!e.notEnabled){ L.bad('phone',(MF.C&&MF.C.ar&&e.message_ar)||e.message||t('Could not send the code. Try again.','تعذّر إرسال الرمز. حاول مرة أخرى.')); L.focusBad(); } }); };
 ACT.verify=()=>{ L.clearBad(); const c=L.val('code').replace(/\D/g,''); if(c.length<4){ L.bad('code',t('Enter the code from the SMS','أدخل الرمز من الرسالة')); L.focusBad(); return; }
   let dev=''; try{ dev=sessionStorage.getItem('mf-dev')||(crypto.randomUUID?crypto.randomUUID():String(Date.now())); sessionStorage.setItem('mf-dev',dev); }catch(x){}
-  API.request('POST','/auth/otp/verify',{challenge_id:L.ui.ch,code:c,device_id:dev}).then(j=>{ L.ui.otp=null; const tk=j&&(j.token||(j.data&&j.data.token)); if(tk) API.setSession(tk); return API.get('/me').then(signedIn2,()=>signedIn2(j)); },
+  API.request('POST','/auth/otp/verify',{challenge_id:L.ui.ch,code:c,device_id:dev}).then(j=>{ L.ui.otp=null; const tk=j&&(j.token||(j.data&&j.data.token)); if(tk) API.setSession(tk); return getMe().then(signedIn2,()=>signedIn2(j)); },
    e=>{ if(!e.notEnabled){ L.bad('code',(MF.C&&MF.C.ar&&e.message_ar)||e.message||t('That code isn’t right.','الرمز غير صحيح.')); L.focusBad(); } }); };
 L.def('app.login',{render:(c)=>{
-  if(!L.ui.meTried){ L.ui.meTried=true; API.get('/me').then(signedIn2,e=>{ const lp=e&&e.body&&e.body.error&&e.body.error.details&&e.body.error.details.login_page; if(typeof lp==='string'&&/^\/[^/]/.test(lp)){ L.ui.loginPage=lp; if(MF.booted) L.rr(); } }); }
+  if(!L.ui.meTried){ L.ui.meTried=true; getMe().then(signedIn2,e=>{ const lp=e&&e.body&&e.body.error&&e.body.error.details&&e.body.error.details.login_page; if(typeof lp==='string'&&/^\/[^/]/.test(lp)){ L.ui.loginPage=lp; if(MF.booted) L.rr(); } }); }
   let h=`<div class="lv-hero"><span class="lv-logo" aria-hidden="true">${I('store',30)}</span><p class="lv-k">MENAFoods</p><h2 class="disp">${t('Wholesale food for your business','مواد غذائية بالجملة لمنشأتك')}</h2><p>${t('Development preview with the live Zoho catalogue.','معاينة التطوير مع كتالوج زوهو الحي.')}</p><div class="btns lv-mini">${L.ab(c.ar?'English':'العربية','lang',null,{k:'sec',sm:true,ic:'globe'})}</div></div>`;
   h+=H.sec(t('Sign in with your mobile','الدخول برقم الجوال'),`<div class="card pad">${L.ui.otp?L.fld('code',t('Enter the code','أدخل الرمز'),{req:true,ltr:true,im:'numeric',max:6,ac:'one-time-code',hint:t(`Sent by SMS to +966 ${esc(L.ui.otp)}`,`أُرسل برسالة نصية إلى ‎+966 ${esc(L.ui.otp)}`)})+H.btns(L.ab(t('Verify & sign in','تحقق وادخل'),'verify'),L.ab(t('Change number','غيّر الرقم'),'otpback',null,{k:'sec'})):L.fld('phone',t('Mobile number','رقم الجوال'),{req:true,ltr:true,im:'tel',pre:'+966',ph:'5X XXX XXXX',max:12,ac:'tel-national'})+H.btns(L.ab(L.ui.busy?t('Sending…','جارٍ الإرسال…'):t('Send code','أرسل الرمز'),'otp',null,{dis:!!L.ui.busy}))}</div>`,{raw:true});
   h+=H.sec('',`<div class="card grp"><a class="row" href="${esc(L.ui.loginPage||'/app/')}"><span class="ic brand" aria-hidden="true">${I('key',20)}</span><span class="b"><span class="t">${t('Already have a MENAFoods login?','لديك حساب في MENAFoods؟')}</span><span class="s">${t('Sign in on the MENAFoods app page, then come back here','سجّل الدخول من صفحة تطبيق MENAFoods ثم ارجع إلى هنا')}</span></span><span class="chev">${I('chev',18)}</span></a></div>`,{raw:true});
@@ -76,7 +83,7 @@ L.def('app.me',{t:['Account','الحساب'],render:(c)=>{ const me=L.S().me||{}
   h+=H.sec(t('Language','اللغة'),L.radio('lang',[['ar','العربية'],['en','English']],c.lang,t('Language','اللغة')));
   h+=H.sec(t('Appearance','المظهر'),L.radio('theme',[['light',t('Light','فاتح')],['dark',t('Dark','داكن')]],c.theme,t('Theme','المظهر')));
   return {b:h,dock:L.ab(t('Sign out','تسجيل الخروج'),'logout',null,{k:'sec',ic:'key'})}; }});
-const lo0=ACT.logout; ACT.logout=(a,b,e)=>{ API.request('POST','/auth/logout',{}).catch(()=>{}).then(()=>{ try{ API.setSession(null); }catch(x){} lo0?lo0(a,b,e):L.logout(); }); };
+const lo0=ACT.logout; ACT.logout=(a,b,e)=>{ API.request('POST','/auth/logout',{}).catch(()=>{}).then(()=>{ try{ API.setSession(null); clearMeCache(); }catch(x){} lo0?lo0(a,b,e):L.logout(); }); };
 /* more: no "switch account / reset" wording */
 const more1=MF.SCR.more&&MF.SCR.more.render; if(more1) MF.SCR.more.render=c=>more1(c).replace(t('Switch account, language, theme, offline, reset','تبديل الحساب واللغة والمظهر وعدم الاتصال وإعادة الضبط'),t('Account, language, theme','الحساب واللغة والمظهر'));
 
@@ -159,8 +166,37 @@ const syncQueryIntoHash=()=>{ const sp=parseSearch(), H=parseHash(); if(!H.id) r
   syncQueryIntoHash();
   const r=L.ui.entry.role, H2=parseHash();
   if(r&&r!=='guest') L.ui.want={role:r,id:H2.id&&!isPub(H2.id)?H2.id:null,q:H2.q.toString(),load:!!sp.get('role')}; })();
+/* until /me resolves, do not write a remembered role or language into the hash */
+(function lockHashUntilMe(){
+  const wr=history.replaceState.bind(history), wp=history.pushState.bind(history);
+  const gate=url=>{
+    if(L.ui.meFresh||url==null) return url;
+    try{
+      const u=new URL(url,location.href);
+      const raw=String(u.hash||'').replace(/^#\/?/,''), i=raw.indexOf('?');
+      const id=i<0?raw:raw.slice(0,i), q=new URLSearchParams(i<0?'':raw.slice(i+1));
+      const er=(L.ui.entry&&L.ui.entry.role)||null, el=(L.ui.entry&&L.ui.entry.lang)||null;
+      const eid=(L.ui.entry&&L.ui.entry.id)||'';
+      if(q.get('role')&&q.get('role')!==er) q.delete('role');
+      if(q.get('lang')&&q.get('lang')!==el) q.delete('lang');
+      if(!eid && id && !isPub(id) && !parseHash().id) return false;
+      const qs=q.toString(); u.hash='#/'+id+(qs?'?'+qs:'');
+      return u.pathname+u.search+u.hash;
+    }catch(e){ return url; }
+  };
+  const wrap=fn=>function(a,b,u){ const g=gate(u); if(g===false) return; return fn.call(this,a,b,g); };
+  history.replaceState=wrap(wr); history.pushState=wrap(wp);
+  try{
+    const desc=Object.getOwnPropertyDescriptor(Location.prototype,'hash');
+    if(desc&&desc.set){
+      Object.defineProperty(window.location,'hash',{configurable:true,enumerable:true,
+        get(){ return desc.get.call(this); },
+        set(v){ const g=gate('#'+String(v).replace(/^#/,'')); if(g===false) return; desc.set.call(this, g?g.replace(/^[^#]*/,''):v); }});
+    }
+  }catch(e){}
+})();
 const hashLang=()=>{ const sp=parseSearch(), H=parseHash(); return sp.get('lang')||H.q.get('lang')||(L.ui.entry&&L.ui.entry.lang)||null; };
-const keepLang=(q)=>{ const lang=hashLang(); if(lang) q.set('lang',lang); const th=(parseSearch().get('theme')||(L.ui.entry&&L.ui.entry.theme)); if(th&&!q.get('theme')) q.set('theme',th); return q; };
+const keepLang=(q)=>{ const lang=hashLang()||((L.S()&&L.S().prefs&&L.S().prefs.lang)||null); if(lang) q.set('lang',lang); const th=(parseSearch().get('theme')||(L.ui.entry&&L.ui.entry.theme)||(L.S()&&L.S().prefs&&L.S().prefs.theme)); if(th&&!q.get('theme')) q.set('theme',th); return q; };
 /* after /me: honour the kept request if the user holds it (and remember that side) */
 const dropQueryRole=()=>{ const sp=new URLSearchParams(location.search); if(!sp.has('role')) return; sp.delete('role'); const x=sp.toString(); history.replaceState(history.state,'',location.pathname+(x?'?'+x:'')+location.hash); };
 const applyWant=()=>{ const w=L.ui.want; L.ui.want=null; if(!w) return false; if(w.load) dropQueryRole(); const S=L.S(), av=avail(), pick=pickFor(w.role,av,S&&S.me); if(!pick) return false;
@@ -251,11 +287,15 @@ const listOf=j=>Array.isArray(j)?j:(j&&Array.isArray(j.data))?j.data:(j&&j.data&
 L.loadFin=()=>{ const S=L.S(), role=S.session&&S.session.role; if(!role) return; const can=id=>{ const d=MF.SCR[id]; return d&&Array.isArray(d.r)&&d.r.includes(role); };
   if(L.ui.fin.role===role) return; L.ui.fin={role};
   const get=(path,key,map,ok)=>{ if(!ok) return Promise.resolve(); L.ui.fin[key]='loading';
-    return API.request('GET',path,undefined,{quiet:true}).then(j=>{ const a=listOf(j); if(a){ const S2=L.S(); S2[key]=a.map(map).filter(x=>x&&(x.no||x.id)); L.ui.fin[key]='ok'; if(L.store&&L.store.replace) L.store.replace(S2); } else L.ui.fin[key]='none'; },
-      e=>{ L.ui.fin[key]=e&&e.status===401?'auth':'none'; }); };
+    const done=()=>{ if(MF.booted) L.rr(); };
+    return API.request('GET',path,undefined,{quiet:true}).then(j=>{ const a=listOf(j); if(a){ const S2=L.S(); S2[key]=a.map(map).filter(x=>x&&(x.no||x.id)); L.ui.fin[key]='ok'; if(L.store&&L.store.replace) L.store.replace(S2); } else L.ui.fin[key]='none'; done(); },
+      e=>{ L.ui.fin[key]=e&&e.status===401?'auth':'none'; done(); }); };
   Promise.all([get(API.paths.invoices,'invoices',nInv,can('b.invoices')||can('b.finance')||can('doc.view')),get(API.paths.payments,'payments',nPay,can('b.finance')||can('b.receipt')||can('b.payments')),get(API.paths.creditNotes,'cns',nCn,can('b.returns')||can('b.creditnotes'))]).then(()=>{ if(MF.booted) L.rr(); }); };
-API.on('boot',()=>setTimeout(L.loadFin,0));
-{ const lg=L.login; L.login=r=>{ const x=lg(r); setTimeout(L.loadFin,0); return x; }; }
+const startFin=()=>{ const id=(parseHash().id||''); const need=/^(b\.(finance|invoices|invoice|pay|receipt|payments|statement|credit|hold|returns))/.test(id);
+  const go=()=>{ try{ L.loadFin(); }catch(e){} };
+  if(need) go(); else if(typeof requestIdleCallback==='function') requestIdleCallback(go,{timeout:400}); else setTimeout(go,0); };
+API.on('boot',()=>startFin());
+{ const lg=L.login; L.login=r=>{ const x=lg(r); startFin(); return x; }; }
 { const d=MF.SCR['b.invoices']; if(d){ const r0=d.render; d.render=c=>{ const s=L.S(); if(!(s.invoices||[]).length){ const ld=L.ui.fin.invoices==='loading'; return ld?H.empty('doc',t('Loading invoices…','جارٍ تحميل الفواتير…'),''):H.empty('doc',t('No invoices yet','لا توجد فواتير بعد'),t('Invoices from Zoho Books show here once your account is linked and invoiced.','تظهر هنا فواتير Zoho Books بعد ربط حسابك وإصدار الفواتير.')); } return r0(c); }; } }
 
 /* preferences: device-local; sent only when the user changes one (quiet if not enabled in the preview) */
@@ -297,7 +337,7 @@ API.setTransform('shop',x=>{ if(!x||typeof x!=='object') return null; const cur=
   if(x.cart&&typeof x.cart==='object'&&!Array.isArray(x.cart)) base.cart=x.cart; if(Array.isArray(x.favs)) base.favs=x.favs.map(String); if(Array.isArray(x.lists)) base.lists=x.lists;
   if(Array.isArray(x.notifs)) base.notifs=x.notifs.filter(n=>n&&n.txt).map(n=>({id:String(n.id),ts:toTs(n.ts)||Date.now(),ic:nz(n.ic,'bell'),txt:Array.isArray(n.txt)?[String(nz(n.txt[0],'')),String(nz(n.txt[1],nz(n.txt[0],'')))]:[String(n.txt),String(n.txt)],go:n.go||null,read:!!n.read}));
   if(fin(x.points)) base.points=Number(x.points); const OB=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{}; base.par=OB(x.par); base.onhand=OB(x.onhand);
-  return base; });
+  return base; }); API.markReady('shop:xform');
 /* order statuses: the screens read o.st / o.fixed, set here from the gateway `status` */
 /* 12. a write the preview refuses (501) is rolled back so no phantom order or payment stays on screen */
 API.on('rejected',e=>{ if(e.store!=='shop'||!e.restore) return; const S=L.S(); Object.entries(e.restore).forEach(([k,v])=>{ S[k]=v==null?(Array.isArray(S[k])?[]:v):v; }); MF.cart=S.cart; if(L.store&&L.store.replace) L.store.replace(S); if(!MF.booted) return;
@@ -459,14 +499,21 @@ L.landAfterMe=R=>{ const S=L.S(), av=R.roles||[], me=S.me, e=L.ui.entry||{};
   const q=keepLang(new URLSearchParams(parseHash().q.toString()));
   q.set('role',pick); if(!ok) ['id','no','k','sku','back'].forEach(k=>q.delete(k));
   const target=`#/${ok&&id0?id0:L.home(pick)}?${q.toString()}`;
-  if(location.hash!==target) location.hash=target; else if(MF.booted) L.rr(); };
-L.refreshMe=()=>{ const S0=L.S(); if(!S0||!S0.session||L.ui.meBusy||L.ui.meFresh) return null; L.ui.meBusy=true;
-  return API.get('/me').then(j=>{ L.ui.meBusy=false; L.ui.meFresh=true; L.ui.meHold=false; const me=meOf(j), S=L.S(), R=L.rolesFromMe(me);
+  if(location.hash!==target) location.hash=target; else if(MF.booted) L.rr();
+  startFin(); };
+const applyMe=j=>{ L.ui.meFresh=true; L.ui.meHold=false; const me=meOf(j), S=L.S(), R=L.rolesFromMe(me);
       S.me=me; S.me.avail=R.roles; applyCtx();
       if(!R.roles.length){ L.save(); if(R.seller){ location.href=SELLER_URL(); return; } }
-      if(applyWant()) return;
-      L.landAfterMe(R); },
-    e=>{ L.ui.meBusy=false; L.ui.meHold=false; L.ui.want=null; if(e&&e.status===401){ const S=L.S(); S.session=null; S.me=null; L.save(); L.ui.meTried=false; if(MF.booted) L.logout(); } else if(MF.booted){ L.ui.meFresh=true; L.rr(); } }); };
+      if(applyWant()){ startFin(); return; }
+      L.landAfterMe(R); startFin(); };
+const onMeErr=e=>{ L.ui.meBusy=false; L.ui.meHold=false; L.ui.want=null; if(e&&e.status===401){ const S=L.S(); S.session=null; S.me=null; L.save(); L.ui.meTried=false; clearMeCache(); if(MF.booted) L.logout(); } else if(MF.booted){ L.ui.meFresh=true; L.rr(); } };
+L.refreshMe=()=>{ const S0=L.S(); if(!S0||!S0.session||L.ui.meBusy) return null;
+  if(L.ui.meFresh&&!L.ui.meReval) return null;
+  const cached=!L.ui.meFresh&&readMeCache();
+  if(cached){ applyMe(cached); L.ui.meReval=true; L.ui.meBusy=true;
+    return getMe().then(j=>{ L.ui.meBusy=false; L.ui.meReval=false; applyMe(j); }, onMeErr); }
+  L.ui.meBusy=true;
+  return getMe().then(j=>{ L.ui.meBusy=false; applyMe(j); }, onMeErr); };
 /* sign-in on this load already read /me */
 { const s2=signedIn2; signedIn2=j=>{ L.ui.meFresh=true; L.ui.meHold=false; return s2(j); }; }
 /* hold the first signed-in render until /me resolves, then role-guard and refresh */

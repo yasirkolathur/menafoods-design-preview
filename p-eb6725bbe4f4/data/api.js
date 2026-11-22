@@ -117,10 +117,18 @@ function sdkToken(force){
   return tokP;
 }
 const sameOrig=u=>{ try{ return new URL(u,location.href).origin===location.origin; }catch(e){ return false; } };
+/* in-flight + short memo for boot GETs so /me, catalogue and bootstrap are started once and shared */
+const inflight={}, memo={};
+const bootKey=path=>/\/(me|catalog\/preview-data|bootstrap\/[^/?]+)$/.test(path)?path:null;
 function request(method,path,body,opt){
   opt=opt||{};
   if(!LIVE) return Promise.reject(Object.assign(new Error('sample mode: no network'),{code:'SAMPLE_MODE'}));
   const url=(C.baseUrl||'')+(opt.erp?C.erpPrefix:C.prefix)+path;
+  const mk=(method==='GET'&&body===undefined)?bootKey(url):null;
+  if(mk&&!opt.nomemo){
+    if(inflight[mk]) return inflight[mk];
+    const hit=memo[mk]; if(hit&&Date.now()-hit.t<15000) return Promise.resolve(hit.j);
+  }
   const idem=method!=='GET'?(opt.idem||uid()):null;
   const send=(tk,retried)=>{
     const ctl=('AbortController' in window)?new AbortController():null; const tm=ctl&&setTimeout(()=>ctl.abort(),C.timeoutMs);
@@ -134,8 +142,10 @@ function request(method,path,body,opt){
      .finally(()=>tm&&clearTimeout(tm));
   };
   const tkP=(!session&&sameOrig(url))?sdkToken(false):Promise.resolve(null);
-  return tkP.then(tk=>send(tk,false))
-   .then(r=>r.status===204?null:r.json().catch(()=>null).then(j=>{ if(!r.ok){ const er=j&&j.error; const e=new Error((er&&er.message)||(typeof er==='string'?er:'')||('HTTP '+r.status)); e.status=r.status; e.body=j; e.code=typeof er==='string'?er:(er&&er.code)||''; e.message_ar=er&&er.message_ar; e.notEnabled=isNotEnabled(r.status,j); if(e.notEnabled&&!opt.quiet) notice(path,e); throw e; } return j; }));
+  const run=tkP.then(tk=>send(tk,false))
+   .then(r=>r.status===204?null:r.json().catch(()=>null).then(j=>{ if(!r.ok){ const er=j&&j.error; const e=new Error((er&&er.message)||(typeof er==='string'?er:'')||('HTTP '+r.status)); e.status=r.status; e.body=j; e.code=typeof er==='string'?er:(er&&er.code)||''; e.message_ar=er&&er.message_ar; e.notEnabled=isNotEnabled(r.status,j); if(e.notEnabled&&!opt.quiet) notice(path,e); throw e; } if(mk) memo[mk]={t:Date.now(),j}; return j; }));
+  if(mk) inflight[mk]=run.finally(()=>{ if(inflight[mk]===run) delete inflight[mk]; });
+  return run;
 }
 
 /* ---------- outbox (live only) ---------- */
@@ -211,7 +221,8 @@ function store(name,key){
     /* live: fetch the server snapshot (same shape as the sample state) and hand it to the app */
     boot(apply){
       if(!isLive(name)) return Promise.resolve(null);
-      return request('GET','/bootstrap/'+name).then(j=>whenReady(name).then(()=>j)).then(j=>{ let st=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:j; if(st&&transforms[name]){ try{ st=transforms[name](st); }catch(x){ console.warn('[MFAPI] transform',x); st=null; } } if(st){ synced[name]=JSON.parse(J(st)); ls.set(k,st); apply&&apply(st); emit('boot',{store:name}); } return st; },
+      /* apply as soon as the snapshot is back and the store transform is registered — do not wait for the catalogue */
+      return request('GET','/bootstrap/'+name).then(j=>whenReady(name+':xform').then(()=>j)).then(j=>{ let st=(j&&j.data&&typeof j.data==='object'&&!Array.isArray(j.data))?j.data:j; if(st&&transforms[name]){ try{ st=transforms[name](st); }catch(x){ console.warn('[MFAPI] transform',x); st=null; } } if(st){ synced[name]=JSON.parse(J(st)); ls.set(k,st); apply&&apply(st); emit('boot',{store:name}); } return st; },
         e=>{ emit(e.status===401?'auth':'offline',{store:name,error:String(e),status:e.status}); return null; });
     }
   };
@@ -233,5 +244,7 @@ function savePrefs(p){
   try{ if(sessionStorage.getItem('mfapi-prefs-off')) return Promise.resolve(null); }catch(e){}
   return request('PUT','/me/preferences',p||{},{quiet:true}).catch(e=>{ if(e&&e.notEnabled){ try{ sessionStorage.setItem('mfapi-prefs-off','1'); }catch(x){} } return null; });
 }
-window.MFAPI={ paths:PATHS, savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+window.MFAPI={ paths:PATHS, savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; Object.keys(memo).forEach(k=>{ if(/\/me$/.test(k)) delete memo[k]; }); }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+/* start independent boot reads as soon as this file runs so they overlap the remaining scripts */
+if(LIVE){ Promise.resolve().then(()=>{ request('GET','/me',undefined,{quiet:true}).then(j=>{ try{ sessionStorage.setItem('mfapi-me-cache',JSON.stringify({t:Date.now(),j})); }catch(e){} },()=>{}); request('GET','/catalog/preview-data',undefined,{quiet:true}).catch(()=>{}); }); }
 })();
