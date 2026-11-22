@@ -453,7 +453,7 @@ function paintMeSkeleton(){ const lang=hashLang()||((navigator.language||'').toL
 L.landAfterMe=R=>{ const S=L.S(), av=R.roles||[], me=S.me, e=L.ui.entry||{};
   const last=sideGet(me);
   const pick=pickFor(e.role,av,me)||(last&&av.includes(last)?last:(av[0]||'viewer'));
-  const id0=(e.id&&!isPub(e.id))?e.id:parseHash().id;
+  const h0=parseHash().id, id0=(e.id&&!isPub(e.id))?e.id:(isPub(h0)?null:h0);
   sideSet(pick); S.session={role:pick,ts:Date.now()}; L.save();
   const ok=canOpen(id0,pick);
   const q=keepLang(new URLSearchParams(parseHash().q.toString()));
