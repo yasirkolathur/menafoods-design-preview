@@ -159,23 +159,68 @@ function request(method,path,body,opt){
   if(mk){ inflight[mk]=run; run.finally(()=>{ if(inflight[mk]===run) delete inflight[mk]; }).catch(()=>{}); }
   return run;
 }
-/* catalogue pages: ETag + body kept in sessionStorage; 304 reuses the stored copy */
-const CAT_SK=(page,limit)=>'mfapi-cat:p'+(page||0)+'l'+(limit||0);
-function catRead(page,limit){ try{ return JSON.parse(sessionStorage.getItem(CAT_SK(page,limit))||'null'); }catch(e){ return null; } }
-function catWrite(page,limit,etag,body){ try{ sessionStorage.setItem(CAT_SK(page,limit),JSON.stringify({etag,body,t:Date.now()})); }catch(e){} }
+/* catalogue pages: compact ETag + body (sessionStorage, evict on quota, IndexedDB fallback).
+   Key matches the URL exactly: ?page={page}&limit={limit} → mfapi-cat:p{page}l{limit}.
+   If-None-Match is sent only when a reusable body is in hand (a 304 has no body). */
+const CAT_PF='mfapi-cat:';
+const catQL=(page,limit)=>{
+  if(page==null||limit==null) return {page:0,limit:0,q:''};
+  const p=Math.max(1,parseInt(page,10)||1), l=Math.min(100,Math.max(1,parseInt(limit,10)||40));
+  return {page:p,limit:l,q:'?page='+p+'&limit='+l};
+};
+const CAT_SK=(page,limit)=>CAT_PF+'p'+page+'l'+limit;
+const catMem={};
+const packP=P=>{ const o={}; if(!P||typeof P!=='object') return o;
+  Object.keys(P).forEach(id=>{ const p=P[id]; if(!p||typeof p!=='object') return;
+    o[id]=[p.en,p.ar,p.g,p.pk,p.pr,p.u,p.cat,p.moq,p.stock,p.img,p.sku,p.vid,p.live]; }); return o; };
+const unpackP=P=>{ const o={}; if(!P||typeof P!=='object') return o;
+  Object.keys(P).forEach(id=>{ const p=P[id];
+    if(Array.isArray(p)) o[id]={en:p[0],ar:p[1],g:p[2],pk:p[3],pr:p[4],u:p[5],cat:p[6],moq:p[7],stock:p[8],img:p[9],sku:p[10],vid:p[11],live:p[12]};
+    else if(p&&typeof p==='object') o[id]=p; }); return o; };
+const packBody=b=>{ if(!b||typeof b!=='object') return b;
+  return {P:packP(b.P),CATS:b.CATS,page:b.page,limit:b.limit,pages:b.pages,total:b.total,has_more:b.has_more,next_page:b.next_page,count:b.count,source:b.source,build_id:b.build_id,built_at:b.built_at,age_s:b.age_s,stale:b.stale,ordering_disabled:b.ordering_disabled,cache:b.cache,note:b.note}; };
+const unpackRec=r=>{ if(!r||typeof r!=='object') return null;
+  const body=r.body; if(!body||typeof body!=='object') return {etag:r.etag||'', body:null, t:r.t||0};
+  const P=unpackP(body.P); return {etag:r.etag||'', t:r.t||0, body:Object.assign({},body,{P})}; };
+let catDbP=null;
+function catDb(){ if(catDbP) return catDbP; if(!window.indexedDB){ catDbP=Promise.resolve(null); return catDbP; }
+  catDbP=new Promise(res=>{ try{ const q=indexedDB.open('mfapi-cat',1);
+    q.onupgradeneeded=()=>{ try{ if(!q.result.objectStoreNames.contains('pages')) q.result.createObjectStore('pages'); }catch(e){} };
+    q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); }catch(e){ res(null); } }); return catDbP; }
+function catIdbGet(k){ return catDb().then(db=>new Promise(res=>{ if(!db) return res(null);
+  try{ const q=db.transaction('pages','readonly').objectStore('pages').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } })); }
+function catIdbSet(k,v){ return catDb().then(db=>new Promise(res=>{ if(!db) return res(false);
+  try{ const q=db.transaction('pages','readwrite').objectStore('pages').put(v,k); q.onsuccess=()=>res(true); q.onerror=()=>res(false); }catch(e){ res(false); } })); }
+function catSsList(){ const a=[]; try{ for(let i=0;i<sessionStorage.length;i++){ const k=sessionStorage.key(i); if(k&&k.indexOf(CAT_PF)===0){ let t=0,n=0; try{ const r=JSON.parse(sessionStorage.getItem(k)||'null'); t=(r&&r.t)||0; n=(sessionStorage.getItem(k)||'').length; }catch(e){} a.push({k,t,n}); } } }catch(e){} return a; }
+function catEvict(keep){ const a=catSsList().filter(x=>x.k!==keep).sort((x,y)=>x.t-y.t||y.n-x.n); let n=0;
+  for(let i=0;i<a.length&&n<4;i++){ try{ sessionStorage.removeItem(a[i].k); n++; }catch(e){} } return n; }
+function catSsWrite(k,rec){ const raw=JSON.stringify(rec);
+  try{ sessionStorage.setItem(k,raw); return true; }
+  catch(e){ const quota=e&&(e.name==='QuotaExceededError'||e.code===22||e.code===1014||/quota/i.test(e.name||'')||/quota/i.test(e.message||''));
+    if(!quota) return false; catEvict(k);
+    try{ sessionStorage.setItem(k,raw); return true; }catch(e2){ try{ sessionStorage.removeItem(k); }catch(x){} return false; } } }
+function catReadSync(page,limit){ const k=CAT_SK(page,limit); if(catMem[k]&&catMem[k].body) return catMem[k];
+  try{ const rec=unpackRec(JSON.parse(sessionStorage.getItem(k)||'null')); if(rec&&rec.body){ catMem[k]=rec; return rec; } }catch(e){} return null; }
+function catRead(page,limit){ const hit=catReadSync(page,limit); if(hit&&hit.body) return Promise.resolve(hit);
+  const k=CAT_SK(page,limit);
+  return catIdbGet(k).then(raw=>{ const rec=unpackRec(raw); if(rec&&rec.body){ catMem[k]=rec; try{ catSsWrite(k,{etag:rec.etag,t:rec.t,v:1,body:packBody(rec.body)}); }catch(e){} return rec; } return null; }); }
+function catWrite(page,limit,etag,body){ if(!etag||!body||!body.P) return; const k=CAT_SK(page,limit);
+  const rec={etag,t:Date.now(),v:1,body:packBody(body)}; catMem[k]={etag,t:rec.t,body:unpackRec(rec).body};
+  if(!catSsWrite(k,rec)) catIdbSet(k,rec); }
 function unwrapCat(j){ if(!j||typeof j!=='object') return j; if(j.P) return j; if(j.data&&j.data.P) return j.data; return j.data||j; }
 function getCatalog(page,limit,opt){
   opt=opt||{};
   const base=PATHS.catalogPreview||PATHS.catalog||'/catalog/preview-data';
-  const q=(page!=null&&limit!=null)?('?page='+encodeURIComponent(page)+'&limit='+encodeURIComponent(Math.min(100,Number(limit)||40))):'';
-  const cached=catRead(page||0,limit||0);
-  const headers={}; if(cached&&cached.etag) headers['If-None-Match']=cached.etag;
-  return request('GET',base+q,undefined,{quiet:opt.quiet!==false, headers, allow304:true, nomemo:!!opt.nomemo||(page>1)}).then(res=>{
-    if(res&&res.status===304&&cached&&cached.body) return {status:304, etag:cached.etag, data:cached.body, fromCache:true, headers:res.headers||{}};
-    const data=unwrapCat(res&&Object.prototype.hasOwnProperty.call(res,'data')?res.data:res);
-    const etag=(res&&res.etag)||'';
-    if(data&&data.P) catWrite(page||data.page||0, limit||data.limit||0, etag, data);
-    return {status:(res&&res.status)||200, etag, data, fromCache:false, headers:(res&&res.headers)||{}};
+  const ql=catQL(page,limit);
+  return catRead(ql.page,ql.limit).then(cached=>{
+    const headers={}; if(cached&&cached.etag&&cached.body) headers['If-None-Match']=cached.etag;
+    return request('GET',base+ql.q,undefined,{quiet:opt.quiet!==false, headers, allow304:true, nomemo:!!opt.nomemo||(ql.page>1)}).then(res=>{
+      if(res&&res.status===304&&cached&&cached.body) return {status:304, etag:cached.etag, data:cached.body, fromCache:true, headers:res.headers||{}};
+      const data=unwrapCat(res&&Object.prototype.hasOwnProperty.call(res,'data')?res.data:res);
+      const etag=(res&&res.etag)||'';
+      if(data&&data.P) catWrite(ql.page||data.page||0, ql.limit||data.limit||0, etag, data);
+      return {status:(res&&res.status)||200, etag, data, fromCache:false, headers:(res&&res.headers)||{}};
+    });
   });
 }
 
@@ -275,7 +320,7 @@ function savePrefs(p){
   try{ if(sessionStorage.getItem('mfapi-prefs-off')) return Promise.resolve(null); }catch(e){}
   return request('PUT','/me/preferences',p||{},{quiet:true}).catch(e=>{ if(e&&e.notEnabled){ try{ sessionStorage.setItem('mfapi-prefs-off','1'); }catch(x){} } return null; });
 }
-window.MFAPI={ paths:PATHS, savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; Object.keys(memo).forEach(k=>{ if(/\/me$/.test(k)) delete memo[k]; }); }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, getCatalog, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff };
+window.MFAPI={ paths:PATHS, savePrefs, setTransform:(n,f)=>{ transforms[n]=f; }, markReady, whenReady, setSession:t=>{ session=t||null; Object.keys(memo).forEach(k=>{ if(/\/me$/.test(k)) delete memo[k]; }); }, mode:C.mode, live:LIVE, isLive, onCatalyst, vatKnown:false, get, getCatalog, notice:()=>notice('',{}), NOT_IN_PREVIEW, config:Object.freeze(Object.assign({},C)), store, strip, pref, request, flush, outbox:{size:()=>outbox.all().length}, on, ENTITIES, _diff:diff, _catCache:{key:CAT_SK,ql:catQL,read:catRead,readSync:catReadSync,write:catWrite,pack:packBody,unpack:unpackRec,mem:catMem,evict:catEvict} };
 /* start independent boot reads as soon as this file runs so they overlap the remaining scripts */
 if(LIVE){ Promise.resolve().then(()=>{ request('GET','/me',undefined,{quiet:true}).then(j=>{ try{ sessionStorage.setItem('mfapi-me-cache',JSON.stringify({t:Date.now(),j})); }catch(e){} },()=>{}); getCatalog(1,40,{quiet:true}).catch(()=>{}); }); }
 })();
