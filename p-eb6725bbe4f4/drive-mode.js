@@ -275,7 +275,7 @@ const BRIEF_Q=()=>[
   T('payments today','مدفوعات اليوم')
 ];
 function canFin(){ const r=ctx().role; return r==='admin'||r==='acct'; }
-function canRewards(){ const c=ctx(); return !c.guest && c.grp==='customer' && ['owner','bm','buyer'].includes(c.role); }
+function canRewards(){ const c=ctx(); if(c.guest) return false; try{ if(window.MF&&typeof MF.canRewards==='function') return !!MF.canRewards(c.role); }catch(e){} return c.role==='owner'||c.role==='sales'; }
 function briefCmds(){
   const na=NA_TXT();
   const [q1,q2,q3,q4]=BRIEF_Q();

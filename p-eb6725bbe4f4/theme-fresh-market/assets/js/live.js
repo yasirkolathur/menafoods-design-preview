@@ -14,7 +14,7 @@ L.r2=r2;
 
 /* ---------------- seed ---------------- */
 function seed(){ const n=now(); const day=86400000;
- const S={ver:2, created:n, session:null, offline:false, prefs:{},
+ const S={ver:2, created:n, session:null, offline:false, prefs:{}, rewardsStaff:{bm:false,buyer:false},
   cart:{}, favs:['p1','p2','p4','p11'],
   lists:[{id:'L1',n:['Tuesday kitchen basket','سلة المطبخ للثلاثاء'],items:{p1:4,p2:2,p3:3,p4:4,p5:2,p7:1}},{id:'L2',n:['Weekend bakery top-up','تزويد المخبز للعطلة'],items:{p6:2,p4:3,p11:1}}],
   par:{p1:6,p2:4,p3:5,p4:10,p5:3,p7:2}, onhand:{p1:4,p2:3,p3:5,p4:8,p5:1,p7:1}, parLog:[],

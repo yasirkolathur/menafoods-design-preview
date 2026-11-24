@@ -284,13 +284,39 @@ L.def('b.creditStatus',{v:null,noSeg:true,t:['Credit request status','حالة �
 /* ---------------- REWARDS ---------------- */
 L.REW=[{id:'rw2',n:['Free delivery on one order','توصيل مجاني لطلب واحد'],cost:500,kind:'ship',ic:'truck'},{id:'rw1',n:['SAR 25 off your next order','خصم 25 ريال على طلبك القادم'],cost:1000,kind:'disc',val:25,ic:'tag'},{id:'rw4',n:['Kitchen aprons × 4 (sample gift)','مرايل مطبخ × 4 (هدية تجريبية)'],cost:1800,kind:'gift',ic:'gift'},{id:'rw3',n:['SAR 100 off your next order','خصم 100 ريال على طلبك القادم'],cost:3500,kind:'disc',val:100,ic:'tag'}];
 L.tier=()=>{ const p=S().points; const T=[[0,t('Bronze','برونزي')],[2000,t('Silver','فضي')],[5000,t('Gold','ذهبي')]]; let i=T.length-1; while(i>0&&p<T[i][0]) i--; const nx=T[i+1]; return {name:T[i][1],next:nx?nx[1]:T[i][1],need:nx?nx[0]-p:0,pct:nx?Math.round((p-T[i][0])/(nx[0]-T[i][0])*100):100}; };
-L.def('re.home',{t:['Rewards','المكافآت'],render:(c)=>{ const s=S(), tr=L.tier(); const pts=(s.points==null||s.points==='')?null:s.points;
- return H.sec('',`<div class="card pad acct" style="align-items:center">${H.ring(tr.pct,'',t(`${tr.pct}% to ${tr.next}`,`${tr.pct}% نحو ${tr.next}`))}<span style="flex:1"><span class="s" style="display:block">${tr.name} · ${t('points balance','رصيد النقاط')}</span><b class="disp" style="font-size:26px">${pts==null?t('not available','غير متوفر'):N(pts)}</b><span class="s" style="display:block">${tr.need>0?t(`${tr.need.toLocaleString('en-US')} to ${tr.next}`,`${tr.need.toLocaleString('en-US')} للوصول إلى ${tr.next}`):t('Top tier','أعلى فئة')}</span></span></div>`,{raw:true})
- +H.sec('',H.rows([{ic:'gift',tone:'acc',t:t('Rewards catalogue','كتالوج المكافآت'),s:t('View only','للعرض فقط'),go:'re.catalogue'},{ic:'tag',tone:'brand',t:t('My rewards','مكافآتي'),go:'re.myrewards'},{ic:'hist',tone:'brand',t:t('Points history','سجل النقاط'),go:'re.points'}]))
- +H.note(t('Points are view-only. Earning and redemption are off.','النقاط للعرض فقط. الكسب والاستبدال متوقفان.'),'spark'); }});
-L.def('re.points',{v:null,noSeg:true,render:()=>H.sec(t('History','السجل'),H.rows(S().ptsLog.map(l=>({ic:l.d>0?'plus':'minus',tone:l.d>0?'ok':'warn',t:T2(l.why),s:ago(l.ts),end:`<b class="num">${l.d>0?'+':'−'}${Math.abs(l.d).toLocaleString('en-US')}</b>`}))))});
+L.custPoints=cu=>{ if(!cu) return null; if(cu.live){ const p=S().points; return (p==null||p==='')?null:p; } return (cu.points==null||cu.points==='')?null:cu.points; };
+L.viewedRewards=()=>{
+  if(MF.C&&MF.C.role==='sales'){
+    const id=qp('cust'); const cu=(L.CUST||[]).find(x=>x.id===id)||null;
+    if(!cu) return {list:true, pts:null, log:[], name:null, cu:null};
+    return {list:false, pts:L.custPoints(cu), log:cu.live?(S().ptsLog||[]):[], name:T2(cu.n), cu};
+  }
+  const s=S(); return {list:false, pts:(s.points==null||s.points==='')?null:s.points, log:s.ptsLog||[], name:null, cu:null};
+};
+L.def('re.home',{t:['Rewards','المكافآت'],render:(c)=>{
+  const note=H.note(t('Points are view-only. Earning and redemption are off.','النقاط للعرض فقط. الكسب والاستبدال متوقفان.'),'spark');
+  if(c.role==='sales'){
+    const id=qp('cust'); const list=L.CUST||[]; const cu=id?list.find(x=>x.id===id):null;
+    if(cu){
+      const pts=L.custPoints(cu);
+      const q={cust:cu.id};
+      return H.sec('',`<div class="card pad acct" style="align-items:center"><span class="av" aria-hidden="true">${T2(cu.n).slice(0,1)}</span><span style="flex:1"><span class="s" style="display:block">${T2(cu.n)} · ${t('points balance','رصيد النقاط')}</span><b class="disp" style="font-size:26px">${pts==null?t('not available','غير متوفر'):N(pts)}</b><span class="s" style="display:block">${t('Assigned customer · view only','عميل مسند · للعرض فقط')}</span></span></div>`,{raw:true})
+        +H.sec('',H.rows([{ic:'gift',tone:'acc',t:t('Rewards catalogue','كتالوج المكافآت'),s:t('View only','للعرض فقط'),go:'re.catalogue',q},{ic:'hist',tone:'brand',t:t('Points history','سجل النقاط'),go:'re.points',q}]))
+        +note;
+    }
+    const rows=list.map(x=>{ const pts=L.custPoints(x); return {av:T2(x.n).slice(0,1),t:T2(x.n),s:t('Assigned customer','عميل مسند'),end:pts==null?t('not available','غير متوفر'):(N(pts)+' '+t('points','نقطة')),go:'re.home',q:{cust:x.id}}; });
+    return H.sec(t('Assigned customers','العملاء المسندون'),H.rows(rows))
+      +H.note(t('View-only. You can see points for your assigned customers. Earning and redemption are off.','للعرض فقط. يمكنك رؤية نقاط عملائك المسندين. الكسب والاستبدال متوقفان.'),'spark');
+  }
+  const s=S(), tr=L.tier(); const pts=(s.points==null||s.points==='')?null:s.points;
+  return H.sec('',`<div class="card pad acct" style="align-items:center">${H.ring(tr.pct,'',t(`${tr.pct}% to ${tr.next}`,`${tr.pct}% نحو ${tr.next}`))}<span style="flex:1"><span class="s" style="display:block">${tr.name} · ${t('points balance','رصيد النقاط')}</span><b class="disp" style="font-size:26px">${pts==null?t('not available','غير متوفر'):N(pts)}</b><span class="s" style="display:block">${tr.need>0?t(`${tr.need.toLocaleString('en-US')} to ${tr.next}`,`${tr.need.toLocaleString('en-US')} للوصول إلى ${tr.next}`):t('Top tier','أعلى فئة')}</span></span></div>`,{raw:true})
+   +H.sec('',H.rows([{ic:'gift',tone:'acc',t:t('Rewards catalogue','كتالوج المكافآت'),s:t('View only','للعرض فقط'),go:'re.catalogue'},{ic:'tag',tone:'brand',t:t('My rewards','مكافآتي'),go:'re.myrewards'},{ic:'hist',tone:'brand',t:t('Points history','سجل النقاط'),go:'re.points'}]))
+   +note; }});
+L.def('re.points',{v:null,noSeg:true,render:()=>{ const vw=L.viewedRewards(); if(vw.list) return H.note(t('Open a customer to see their points history.','افتح عميلاً لعرض سجل نقاطه.'))+H.note(t('Points are view-only. Earning and redemption are off.','النقاط للعرض فقط. الكسب والاستبدال متوقفان.'),'spark');
+  if(!vw.log.length) return H.sec(t('History','السجل'),H.empty('hist',t('not available','غير متوفر'),t('No points history for this customer.','لا يوجد سجل نقاط لهذا العميل.')));
+  return H.sec(t('History','السجل'),H.rows(vw.log.map(l=>({ic:l.d>0?'plus':'minus',tone:l.d>0?'ok':'warn',t:T2(l.why),s:ago(l.ts),end:`<b class="num">${l.d>0?'+':'−'}${Math.abs(l.d).toLocaleString('en-US')}</b>`})))); }});
 const rwRow=r=>{ return H.row({ic:r.ic,tone:'acc',t:T2(r.n),s:`${N(r.cost)} ${t('points','نقطة')}`}); };
-L.def('re.catalogue',{render:()=>H.sec('',`<div class="card pad">${t('Balance','الرصيد')}: <b>${S().points==null||S().points===''?t('not available','غير متوفر'):N(S().points)}</b> ${t('points','نقطة')}</div>`,{raw:true})+H.sec(t('Rewards','المكافآت'),L.REW.map(rwRow).join(''))+H.note(t('Points are view-only. Redemption is off.','النقاط للعرض فقط. الاستبدال متوقف.'))});
+L.def('re.catalogue',{render:()=>{ const vw=L.viewedRewards(); const bal=vw.pts==null?t('not available','غير متوفر'):N(vw.pts); return H.sec('',`<div class="card pad">${t('Balance','الرصيد')}: <b>${bal}</b> ${t('points','نقطة')}</div>`,{raw:true})+H.sec(t('Rewards','المكافآت'),L.REW.map(rwRow).join(''))+H.note(t('Points are view-only. Redemption is off.','النقاط للعرض فقط. الاستبدال متوقف.')); }});
 L.def('re.reward',{v:null,noSeg:true,t:['Redeem a reward','استبدال مكافأة'],render:()=>MF.SCR['re.catalogue'].render(MF.C)});
 ACT.redeem=id=>{ toast(t('Redemption is off. Points are view-only.','الاستبدال متوقف. النقاط للعرض فقط')); return; const r=L.REW.find(x=>x.id===id); const s=S(); if(s.points<r.cost){ toast(t('Not enough points','النقاط غير كافية')); return; }
  if(L.ui.rconf!==id){ L.ui.rconf=id; L.sheet(t('Redeem this reward?','استبدال هذه المكافأة؟'),`<div class="card pad" style="margin-bottom:12px">${H.kv([[t('Reward','المكافأة'),T2(r.n)],[t('Cost','التكلفة'),N(r.cost)+' '+t('points','نقطة')],[t('Balance after','الرصيد بعد'),N(s.points-r.cost)]])}</div><div class="btns">${L.ab(t('Confirm','تأكيد'),'redeem',id)}${L.ab(t('Cancel','إلغاء'),'cardx',null,{k:'sec'})}</div>`); return; }
@@ -306,4 +332,13 @@ ACT.refadd=()=>{ L.clearBad(); const n=L.val('refname'); if(!n){ L.bad('refname'
 /* ---------------- NOTIFICATIONS ---------------- */
 L.def('n.center',{v:null,noSeg:true,render:(c)=>{ const n=S().notifs; if(!n.length) return H.empty('inbox',t('No notifications','لا إشعارات'),t('Order updates, replies and approvals appear here.','تظهر هنا تحديثات الطلبات والردود والموافقات.')); return H.sec('',H.rows(n.map(x=>({ic:x.ic||'bell',tone:x.read?'':'brand',t:(x.read?'':`<span class="vh">${t('Unread','غير مقروء')}: </span>`)+esc(T2(x.txt)),s:ago(x.ts),go:x.go?href(x.go[0],x.go[1]||{}):null,pill:x.read?null:['info',t('New','جديد')]}))))+H.btns(L.ab(t('Mark all as read','علّم الكل كمقروء'),'nread',null,{k:'sec'})); }});
 ACT.nread=()=>{ S().notifs.forEach(n=>n.read=true); L.save(); L.rr(); };
+(function(){ const d=MF.SCR['bh.team']; if(!d||d.__rewStaff) return; d.__rewStaff=true; const r0=d.render; d.render=c=>{
+  const b=r0(c); const flags=(MF.rewardsStaffFlags&&MF.rewardsStaffFlags())||{};
+  const staff=[['bm',t('Branch manager','مدير الفرع')],['buyer',t('Buyer','المشتري')]];
+  const rows=staff.map(([k,l])=>{ const on=!!flags[k]; return H.row({t:l,s:on?t('Rewards on','المكافآت مفعّلة'):t('Rewards off (default)','المكافآت متوقفة (افتراضي)'),end:L.ab(on?t('Turn off','إيقاف'):t('Enable','تفعيل'),'rewstaff',k+':'+(on?'0':'1'),{sm:true,k:'sec'})}); });
+  const extra=H.sec(t('Rewards for customer staff','المكافآت لموظفي العميل'),rows.join('')+H.note(t('The account owner always sees Rewards. Branch managers and buyers see it only when you enable it for them. Default is off.','المالك يرى المكافآت دائماً. مدير الفرع والمشتري يريانها فقط عند تفعيلها لهما. الافتراضي متوقف.')));
+  if(typeof b==='string') return b+extra;
+  return {b:(b.b||'')+extra, dock:b.dock, title:b.title};
+}; })();
+ACT.rewstaff=a=>{ const [role,v]=String(a||'').split(':'); if(MF.setRewardsStaff) MF.setRewardsStaff(role,v!=='0'); if(L.save) L.save(); L.rr(); toast((v!=='0')?t('Rewards enabled for this staff member','تم تفعيل المكافآت لهذا الموظف'):t('Rewards turned off for this staff member','تم إيقاف المكافآت لهذا الموظف')); };
 })();

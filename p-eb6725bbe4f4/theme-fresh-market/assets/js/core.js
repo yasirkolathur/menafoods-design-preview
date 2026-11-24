@@ -119,15 +119,60 @@ MF.ROLES = {
  bm:{n:['Customer · branch manager','العميل · مدير الفرع'],grp:'customer',ctx:['Al Wadi Restaurant · Olaya','مطعم الوادي · العليا'],nav:[['home','b.home',['Home','الرئيسية']],['grid','b.catalog',['Catalogue','المنتجات']],['box','b.orders',['Orders','الطلبات']],['inbox','b.approvals',['Approvals','الموافقات'],2],['more','more',['More','المزيد']]]},
  buyer:{n:['Customer · buyer','العميل · المشتري'],grp:'customer',ctx:['Al Wadi Restaurant · Olaya','مطعم الوادي · العليا'],nav:[['home','b.home',['Home','الرئيسية']],['grid','b.catalog',['Catalogue','المنتجات']],['spark','b.reorder',['Reorder','إعادة الطلب']],['box','b.orders',['Orders','الطلبات']],['more','more',['More','المزيد']]]},
  cashier:{n:['Customer · cashier','العميل · أمين الصندوق'],grp:'customer',ctx:['Al Nakheel Shawarma · counter','شاورما النخيل · الكاشير'],nav:[['home','cb.today',['Today','اليوم']],['plus','cb.sale',['Sale','بيع']],['receipt','cb.expense',['Expense','مصروف']],['lock','bh.close',['Close day','إغلاق اليوم']],['more','more',['More','المزيد']]]},
- sales:{n:['Salesperson','مندوب المبيعات'],grp:'staff',ctx:['Riyadh North · Faisal','شمال الرياض · فيصل'],nav:[['home','s.today',['Today','اليوم']],['users','s.customers',['Customers','العملاء']],['cart','s.order',['Order','طلب']],['more','more',['More','المزيد']]]},
+ sales:{n:['Salesperson','مندوب المبيعات'],grp:'staff',ctx:['Riyadh North · Faisal','شمال الرياض · فيصل'],nav:[['home','s.today',['Today','اليوم']],['users','s.customers',['Customers','العملاء']],['cart','s.order',['Order','طلب']],['star','re.home',['Rewards','المكافآت']],['more','more',['More','المزيد']]]},
  van:{n:['Sales + delivery van','مندوب البيع والتوصيل (الفان)'],grp:'staff',ctx:['Van 07 · Riyadh East','فان 07 · شرق الرياض'],nav:[['route','v.route',['Route','المسار']],['box','v.stock',['Stock','المخزون']],['receipt','v.sale',['Invoice','فاتورة']],['sync','v.queue',['Queue','الانتظار'],3],['more','more',['More','المزيد']]]},
  driver:{n:['Delivery driver','سائق التوصيل'],grp:'staff',ctx:['Truck 12 · Riyadh North','شاحنة 12 · شمال الرياض'],nav:[['route','d.route',['Route','المسار']],['pin','d.stop',['Stop','المحطة']],['refresh','d.returns',['Returns','المرتجعات']],['more','more',['More','المزيد']]]},
  store:{n:['Storekeeper','أمين المستودع'],grp:'staff',ctx:['Riyadh DC · Zone B','مستودع الرياض · المنطقة B'],nav:[['layers','k.lists',['Picks','التجهيز']],['scan','k.pick',['Scan','المسح']],['download','k.receive',['Receive','الاستلام']],['truck','k.dispatch',['Dispatch','الإرسال']],['more','more',['More','المزيد']]]},
  acct:{n:['Accountant','المحاسب'],grp:'staff',ctx:['Finance · credit desk','المالية · مكتب الائتمان'],nav:[['inbox','a.inbox',['Approvals','الاعتمادات'],4],['chart','a.aging',['Aging','الأعمار']],['phone','a.collect',['Collect','التحصيل']],['doc','a.statements',['Statements','الكشوف']],['more','more',['More','المزيد']]]},
  mgr:{n:['Manager (approver)','المدير (المعتمد)'],grp:'staff',ctx:['Credit committee','لجنة الائتمان'],nav:[['inbox','m.inbox',['Approvals','الاعتمادات'],2],['chart','m.portfolio',['Portfolio','المحفظة']],['doc','m.reports',['Reports','التقارير']],['bell','n.center',['Alerts','التنبيهات']],['more','more',['More','المزيد']]]},
- admin:{n:['Admin','مسؤول النظام'],grp:'staff',ctx:['MENAFoods admin','إدارة MENAFoods'],nav:[['chart','ad.overview',['Overview','نظرة عامة']],['users','ad.users',['Users','المستخدمون']],['settings','ad.rules',['Rules','القواعد']],['chart','a.aging',['Overdue','المتأخر']],['more','more',['More','المزيد']]]},
+ admin:{n:['Admin','مسؤول النظام'],grp:'staff',ctx:['MENAFoods admin','إدارة MENAFoods'],nav:[['chart','ad.overview',['Overview','نظرة عامة']],['users','ad.users',['Users','المستخدمون']],['settings','ad.rules',['Rules','القواعد']],['star','rm.overview',['Rewards','المكافآت']],['more','more',['More','المزيد']]]},
  aff:{n:['Outside affiliate','شريك تسويق خارجي'],grp:'outside',ctx:['Affiliate · Noura (sample)','شريكة · نورة (عينة)'],nav:[['chart','rx.dash',['Dashboard','لوحتي']],['link','rx.links',['Links','الروابط']],['wallet','rx.wallet',['Wallet','المحفظة']],['more','more',['More','المزيد']]]}
 };
+
+/* Rewards access: account owner always; salesperson for assigned customers; customer staff (branch manager, buyer) only when enabled (default off). Admin opens the rules panel. Delivery, van, store, accountant and other staff stay blocked. */
+MF.REWARDS_STAFF=['bm','buyer'];
+MF.rewardsStaffFlags=()=>{
+  let f={};
+  try{ const S=MF.L&&MF.L.S&&MF.L.S(); if(S&&S.rewardsStaff&&typeof S.rewardsStaff==='object') Object.assign(f,S.rewardsStaff); }catch(e){}
+  try{ if(MF._rewardsStaff) Object.assign(f,MF._rewardsStaff); }catch(e){}
+  try{
+    const q=new URLSearchParams(((location.hash.split('?')[1]||'')+'&'+(location.search||'').replace(/^\?/,'')));
+    const v=q.get('rewardsStaff');
+    if(v){ if(v==='1'||v==='all'){ (MF.REWARDS_STAFF||[]).forEach(r=>{ f[r]=true; }); }
+      else v.split(',').forEach(r=>{ r=(r||'').trim(); if(r) f[r]=true; }); }
+  }catch(e){}
+  return f;
+};
+MF.rewardsStaffOn=role=>{ role=role||(MF.C&&MF.C.role); return !!MF.rewardsStaffFlags()[role]; };
+MF.setRewardsStaff=(role,on)=>{
+  if(!role) return;
+  try{
+    const S=MF.L&&MF.L.S&&MF.L.S();
+    if(S){ S.rewardsStaff=S.rewardsStaff||{}; S.rewardsStaff[role]=!!on; if(MF.L.save) MF.L.save(); }
+    else { MF._rewardsStaff=MF._rewardsStaff||{}; MF._rewardsStaff[role]=!!on; }
+  }catch(e){}
+};
+MF.canRewards=role=>{
+  role=role||(MF.C&&MF.C.role);
+  if(!role||role==='guest') return false;
+  if(role==='owner'||role==='sales') return true;
+  if((MF.REWARDS_STAFF||[]).indexOf(role)>=0) return !!MF.rewardsStaffOn(role);
+  return false;
+};
+MF.canRewardsRules=role=>{ role=role||(MF.C&&MF.C.role); return role==='admin'; };
+MF.canOpen=(def,role)=>{
+  if(!def) return false;
+  role=role||(MF.C&&MF.C.role);
+  const inR=!!(def.r&&(String(def.r).includes(role)||String(def.r).includes('*')));
+  const id=def.id||'';
+  if(def.a==='rewards'||/^(re|rm|rs|rd|rx|rc)\./.test(id)){
+    if(id==='rm.overview'||id==='rm.rules') return role==='admin'&&inR;
+    if(/^re\./.test(id)) return !!MF.canRewards(role)&&inR;
+    return false;
+  }
+  return inR;
+};
+
 MF.AREAS = {onboarding:['Onboarding & sign-up','التسجيل والتحقق'],home:['Home','الرئيسية'],search:['Search & catalogue','البحث والمنتجات'],product:['Product detail','تفاصيل المنتج'],cart:['Cart & checkout','السلة وإتمام الطلب'],reorder:['Reorder & par levels','إعادة الطلب والحد الأدنى'],orders:['Orders & tracking','الطلبات والتتبع'],credit:['Credit & statements','الائتمان والكشوف'],invoices:['Invoices & payments','الفواتير والمدفوعات'],team:['Team & branch approvals','الفريق وموافقات الفروع'],c360:['Customer 360','ملف العميل 360'],sales:['Salesperson','المبيعات'],van:['Van sales','البيع بالفان'],driver:['Delivery','التوصيل'],store:['Warehouse','المستودع'],backoffice:['Credit desk & approvals','مكتب الائتمان والاعتمادات'],admin:['Admin','الإدارة'],notifications:['Notifications','الإشعارات'],settings:['Settings','الإعدادات'],rewards:['Rewards & Earn','المكافآت والأرباح'],hub:['Business Hub','مركز الأعمال'],cashbook:['Cash book','دفتر النقدية']};
 const STAFF_GRANT = ['Admin','مسؤول النظام'], CUST_GRANT=['The owner (Faisal)','المالك (فيصل)'];
 
@@ -174,7 +219,7 @@ function render(focus){
  const plat = ['pwa','ios','android'].includes(P.plat)?P.plat:'pwa';
  const size = P.size || (innerWidth>=900?'tablet':'phone');
  const theme = P.theme || (MF.DEFAULT_THEME || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
- const allowed = def.r.includes(role) || def.r.includes('*');
+ const allowed = (typeof MF.canOpen==='function') ? !!MF.canOpen(def, role) : (def.r.includes(role) || def.r.includes('*'));
  let state = P.state || 'default'; if(!allowed) state='denied';
  C = MF.C = {id, def, role, plat, size, tablet:size==='tablet', theme, lang, ar:AR, v:P.v||(def.v?def.v[0][0]:''), sub:P.sub||'', state, off:state==='offline'};
  const de = document.documentElement; de.lang=lang; de.dir=AR?'rtl':'ltr'; de.dataset.theme=theme; de.className=`plat-${plat} ${size} st-${state}`;

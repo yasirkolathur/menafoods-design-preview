@@ -4,7 +4,7 @@ const MF=window.MF,{t,H,M,N,I,G,D2,D1,LTR,href}=MF; const S=MF.S, tt=MF.tt;
 const ALL='owner bm buyer cashier sales van driver store acct mgr admin aff';
 /* ---- More: every screen this role can open, grouped by area ---- */
 S('more',{a:'settings',r:ALL,t:['More','المزيد'],nav:'more',
- render:(c)=>{ const R=MF.ROLES[c.role]; const by={}; MF.ORDER.forEach(id=>{ const d=MF.SCR[id]; if(id==='more'||!d.r.includes(c.role)) return; (by[d.a]=by[d.a]||[]).push(d); });
+ render:(c)=>{ const R=MF.ROLES[c.role]; const by={}; MF.ORDER.forEach(id=>{ const d=MF.SCR[id]; if(id==='more'||!d.r.includes(c.role)||(typeof MF.canOpen==='function'&&!MF.canOpen(d,c.role))) return; (by[d.a]=by[d.a]||[]).push(d); });
   let h=H.sec('',`<div class="card pad acct"><span class="av" aria-hidden="true">${tt(R.n).slice(0,1)}</span><span><h2>${tt(R.ctx)}</h2><span class="s">${tt(R.n)}</span></span></div>`,{raw:true});
   Object.keys(MF.AREAS).forEach(a=>{ if(!by[a]) return; h+=H.sec(tt(MF.AREAS[a]),H.rows(by[a].map(d=>({t:tt(d.t),go:d.id})))); });
   return h; }});
