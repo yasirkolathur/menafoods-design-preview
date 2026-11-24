@@ -261,25 +261,53 @@ const css=`:root{--dm-brand:var(--c-brand,var(--primary,var(--brand,#0A6B4F)));-
 function addCss(){ if(document.getElementById('mfdmCss')) return; const st=document.createElement('style'); st.id='mfdmCss'; st.textContent=css; (document.head||document.documentElement).appendChild(st); }
 
 /* ---------- sample voice answers (role-aware) ---------- */
+/* Checklist prompts (points today, overdue invoices, supplier bills due, payments today):
+   answers never invent amounts. Missing or unapproved data replies “not available” / «غير متوفر».
+   “payments today” stays unavailable for every role until the owner approves access.
+   Today’s points need a live today-total; until then the reply is “not available” even for customers.
+   Admin/accountant may open the overdue and supplier-bills screens; voice still says “not available”
+   until a verified live figure exists. Guest and unapproved roles get “not available” only. */
+const NA_TXT=()=>T('not available','غير متوفر');
+const BRIEF_Q=()=>[
+  T('points today','نقاط اليوم'),
+  T('overdue invoices','الفواتير المتأخرة'),
+  T('supplier bills due','فواتير الموردين المستحقة'),
+  T('payments today','مدفوعات اليوم')
+];
+function canFin(){ const r=ctx().role; return r==='admin'||r==='acct'; }
+function canRewards(){ const c=ctx(); return !c.guest && c.grp==='customer' && ['owner','bm','buyer'].includes(c.role); }
+function briefCmds(){
+  const na=NA_TXT();
+  const [q1,q2,q3,q4]=BRIEF_Q();
+  return [
+    {q:q1,a:na,k:'points_today'},
+    {q:q2,a:na,k:'overdue_invoices'},
+    {q:q3,a:na,k:'supplier_bills'},
+    {q:q4,a:na,k:'payments_today'}
+  ];
+}
+function clearVoice(){ UI.heard=''; UI.answer=''; UI.confirm=null; UI.listening=false; clearTimeout(tmr); }
 function cmds(){
   const c=ctx(); const r=c.role;
-  if(c.grp==='customer'||c.grp==='guest') return [
+  const brief=briefCmds();
+  if(c.guest) return brief;
+  if(c.grp==='customer') return brief.concat([
     {q:T('My open orders','طلباتي المفتوحة'),a:T('You have 2 open orders. The latest, #58240, arrives tomorrow 7–9 AM.','لديك طلبان مفتوحان. آخرها ‎#58240 يصل غدًا 7–9 صباحًا.'),go:'b.orders'},
     {q:T('What do I owe?','كم عليّ؟'),a:T('Your balance due is 2,140.00 riyals. Invoice INV-2026-0412 is 4 days overdue.','المستحق عليك 2,140.00 ريال. الفاتورة INV-2026-0412 متأخرة 4 أيام.'),go:'b.finance'},
     {q:T('Open my cart','افتح السلة'),a:T('Opening your cart.','جارٍ فتح سلتك.'),go:'b.cart',nav:true},
-    {q:T('Place my usual order','اطلب طلبي المعتاد'),ctrl:true,go:'b.reorder'}];
-  if(['driver','van','d','v'].includes(r)||/driver|van/.test(r)) return [
+    {q:T('Place my usual order','اطلب طلبي المعتاد'),ctrl:true,go:'b.reorder'}]);
+  if(['driver','van','d','v'].includes(r)||/driver|van/.test(r)) return brief.concat([
     {q:T('Next stop','المحطة التالية'),a:T('Next stop: Al Wadi Restaurant, Olaya. 4.2 km, about 9 minutes.','المحطة التالية: مطعم الوادي، العليا. 4.2 كم، نحو 9 دقائق.')},
     {q:T('Deliveries left','التوصيلات المتبقية'),a:T('4 deliveries left today and 3,420.00 riyals cash to collect.','تبقى 4 توصيلات اليوم و3,420.00 ريال نقدًا للتحصيل.')},
-    {q:T('Confirm delivery','أكّد التسليم'),ctrl:true}];
-  if(/sales/.test(r)) return [
+    {q:T('Confirm delivery','أكّد التسليم'),ctrl:true}]);
+  if(/sales/.test(r)) return brief.concat([
     {q:T('My visits today','زياراتي اليوم'),a:T('5 visits today. Next: Bayt Al Kunafa at 11:30.','5 زيارات اليوم. التالية: بيت الكنافة 11:30.')},
     {q:T('Who is overdue?','من المتأخر؟'),a:T('3 of your customers are more than 7 days overdue.','3 من عملائك متأخرون أكثر من 7 أيام.')},
-    {q:T('Take an order','سجّل طلبًا'),ctrl:true}];
-  return [
+    {q:T('Take an order','سجّل طلبًا'),ctrl:true}]);
+  return brief.concat([
     {q:T('Approvals waiting','الموافقات المنتظرة'),a:T('4 credit approvals are waiting for you. The oldest is 2 hours old.','4 طلبات ائتمان بانتظارك. أقدمها منذ ساعتين.')},
     {q:T('Overdue accounts','الحسابات المتأخرة'),a:T('3 accounts are on hold after 7 days overdue.','3 حسابات موقوفة بعد تأخر 7 أيام.')},
-    {q:T('Approve the first one','اعتمد الأول'),ctrl:true}];
+    {q:T('Approve the first one','اعتمد الأول'),ctrl:true}]);
 }
 
 /* ---------- pill, banner, sheet ---------- */
@@ -307,6 +335,7 @@ function headerSlot(){
 const dirOf=el=>{ if(!el||!el.setAttribute) return; const ar=ctx().lang==='ar'; el.setAttribute('dir',ar?'rtl':'ltr'); el.setAttribute('lang',ar?'ar':'en'); };
 let busy=false;
 function ensure(){ markTheme();
+  if(ctx().guest && (UI.open||UI.heard||UI.answer||UI.listening)){ clearVoice(); UI.open=false; }
   if(busy) return; busy=true;
   try{
     addCss();
@@ -520,5 +549,5 @@ function observe(){
   window.addEventListener('hashchange',sched); sched();
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',observe); else observe();
-window.MFDrive={version:'preview-1',pref:()=>Object.assign({},P),setMode:m=>{ setMode(m); rerender(); },active,ensure,_ui:UI};
+window.MFDrive={version:'preview-1',pref:()=>Object.assign({},P),setMode:m=>{ setMode(m); rerender(); },active,ensure,_ui:UI,cmds,ctx,na:NA_TXT,brief:BRIEF_Q,canFin,canRewards,clearVoice};
 })();
