@@ -35,9 +35,13 @@ function lang(){
   const s=new URLSearchParams(location.search), h=hq(), hp=new URLSearchParams(location.hash.slice(1));
   const v=s.get('lang')||h.q.get('lang')||hp.get('l')||h.q.get('l');
   if(v==='ar'||v==='en') return v;
+  /* Direction B (and C) keep lang/dir on .app and in S.lang; <html> stays en. */
+  try{ if(typeof S!=='undefined'&&S&&(S.lang==='ar'||S.lang==='en')) return S.lang; }catch(e){}
   const d=document.documentElement; if((d.lang||'').startsWith('ar')||d.dir==='rtl') return 'ar';
-  const dev=document.querySelector('#viewer .app[dir][lang]')||document.querySelector('.device [dir]'); if(dev&&dev.getAttribute('dir')==='rtl') return 'ar';
+  const app=document.querySelector('#viewer .app[dir], #viewer .app[lang], .app[dir], .app[lang], .device [dir], .device [lang]');
+  if(app){ const dir=app.getAttribute('dir')||app.dir||''; const al=app.getAttribute('lang')||''; if(dir==='rtl'||(al||'').startsWith('ar')) return 'ar'; }
   try{ const m=localStorage.getItem('mfp.lang'); if(m==='ar'||m==='en') return m; }catch(e){}
+  try{ const m=localStorage.getItem('mf.lang'); if(m==='ar'||m==='en') return m; }catch(e){}
   return 'en';
 }
 /* where am I: {mod, key} where key is an engine-specific route that can be kept exactly */
@@ -209,12 +213,17 @@ function place(force){ const f=root.querySelector('.fab'); if(!f||host.hasAttrib
   f.classList.toggle('end',pick.side==='end'); f.style.top=pick.y+'px'; f.style.bottom='auto';
 }
 window.MFSwitch={open,close,here,place,dest:(id)=>dest(TH.find(t=>t.id===id),here(),lang()),themes:TH.map(t=>t.id),list:()=>TH.map(t=>({id:t.id,n:t.n,tag:t.tag,g:t.g})),lang,THEME};
-function mount(){ if(!document.body) return; if(!host.isConnected) document.body.appendChild(host); if(!host.hasAttribute('open')){ lastPlace=''; build(); setTimeout(()=>place(true),60); } }
+function mount(){ watchAppLang(); if(!document.body) return; if(!host.isConnected) document.body.appendChild(host); if(!host.hasAttribute('open')){ lastPlace=''; build(); setTimeout(()=>place(true),60); } }
 let tm=0; const re=()=>{ clearTimeout(tm); tm=setTimeout(()=>{ if(!host.hasAttribute('open')) build(); if(!host.isConnected) document.body.appendChild(host); setTimeout(()=>place(false),80); },160); };
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mount); else mount();
 window.addEventListener('hashchange',re); window.addEventListener('load',re);
 // apps that rewrite <body> or switch language without a hash change
 new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['lang','dir']});
+/* Direction B/C set lang and dir on #viewer .app (and data-ui-dir on #viewer), not on <html>. */
+function watchAppLang(){ const v=document.getElementById('viewer'); if(!v||v.__mfLangObs) return;
+  v.__mfLangObs=new MutationObserver(re);
+  v.__mfLangObs.observe(v,{attributes:true,attributeFilter:['lang','dir','data-ui-dir'],childList:true,subtree:true}); }
+watchAppLang();
 const watchBody=()=>{ if(document.body) new MutationObserver(()=>{ if(!host.isConnected) mount(); }).observe(document.body,{childList:true}); };
 if(document.body) watchBody(); else document.addEventListener('DOMContentLoaded',watchBody);
 setInterval(()=>{ if(document.body&&!host.isConnected) mount(); else place(false); },1500);
