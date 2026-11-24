@@ -119,7 +119,7 @@ L.ACC=[
 L.acc=role=>L.ACC.find(a=>a[0]===role)||L.ACC[0];
 L.home=role=>{ const R=MF.ROLES[role]; return R&&R.nav.length?R.nav[0][1]:'ob.welcome'; };
 L.login=(role)=>{ S.session={role,ts:now()}; save(); const q={role,lang:hp().lang||S.prefs.lang||null,theme:hp().theme||S.prefs.theme||null}; Object.keys(q).forEach(k=>{ if(!q[k]) delete q[k]; }); const s=new URLSearchParams(q).toString(); location.hash=`#/${L.home(role)}?${s}`; setTimeout(()=>toast(t(`Signed in as ${L.acc(role)[1]}`,`تم الدخول باسم ${L.acc(role)[2]}`)),60); };
-L.logout=()=>{ S.session=null; save(); const q=new URLSearchParams(); const p=hp(); if(p.lang) q.set('lang',p.lang); if(p.theme) q.set('theme',p.theme); location.hash='#/app.login'+(q.toString()?'?'+q:''); };
+L.logout=()=>{ S.session=null; save(); try{ if(window.MFDrive&&MFDrive.clearVoice) MFDrive.clearVoice(); if(window.MFDrive&&MFDrive._ui){ MFDrive._ui.open=false; } }catch(e){} const q=new URLSearchParams(); const p=hp(); if(p.lang) q.set('lang',p.lang); if(p.theme) q.set('theme',p.theme); location.hash='#/app.login'+(q.toString()?'?'+q:''); };
 
 /* ---------------- action registry ---------------- */
 const ACT=L.ACT={};
@@ -220,14 +220,30 @@ function post(){
 L.post=[]; L.postFn=post;
 
 /* ---------------- boot ---------------- */
+const PUB=['app.login','ob.welcome','ob.phone','ob.otp','ob.cr','ob.vat','ob.business','ob.review','cc.home','cc.topics','cc.article','cc.chat','cc.callback','cc.whatsapp'];
+/* After sign-out, a bare hash must not reopen the previous role's screens (core would fall back to the screen's first allowed role and leak figures). */
+L.signedOut=()=>!S.session;
+L.forceLogin=()=>{
+ const p=hp();
+ const q=new URLSearchParams(); const lang=p.lang||(S.prefs&&S.prefs.lang); const th=p.theme||(S.prefs&&S.prefs.theme);
+ if(lang) q.set('lang',lang); if(th) q.set('theme',th);
+ const next='#/app.login'+(q.toString()?'?'+q:'');
+ if(location.hash!==next) history.replaceState(null,'',next);
+ return next;
+};
+const render0=MF.render;
+MF.render=function(focus){
+ const p=hp();
+ if(!S.session && p.role!=='guest' && !PUB.includes(p.id)) L.forceLogin();
+ return render0.apply(this,arguments);
+};
 const boot0=MF.boot;
 MF.boot=()=>{
  const p=hp();
  if(p.role && MF.ROLES[p.role] && p.role!=='guest'){ if(!S.session||S.session.role!==p.role){ S.session={role:p.role,ts:now()}; save(); } }
- const pub=['app.login','ob.welcome','ob.phone','ob.otp','ob.cr','ob.vat','ob.business','ob.review','rx.join','rx.kyc','cc.home','cc.topics','cc.article','cc.chat','cc.callback','cc.whatsapp'];
- if(!S.session && p.role!=='guest' && !pub.includes(p.id)){ const q=new URLSearchParams(); const lang=p.lang||S.prefs.lang; const th=p.theme||S.prefs.theme; if(lang) q.set('lang',lang); if(th) q.set('theme',th); history.replaceState(null,'','#/app.login'+(q.toString()?'?'+q:'')); }
+ if(!S.session && p.role!=='guest' && !PUB.includes(p.id)) L.forceLogin();
  else if(S.session && (!p.role || !p.id)){ const q=new URLSearchParams(location.hash.split('?')[1]||''); q.set('role',S.session.role); if(!q.get('lang')&&S.prefs.lang) q.set('lang',S.prefs.lang); if(!q.get('theme')&&S.prefs.theme) q.set('theme',S.prefs.theme); const id=p.id&&MF.SCR[p.id]&&p.id!=='app.login'?p.id:L.home(S.session.role); history.replaceState(null,'','#/'+id+'?'+q); }
  L.tick(); track(); MF.booted=true; MF.render(false); post();
 };
-window.addEventListener('hashchange',()=>{ track(); const p=hp(); if(p.role&&MF.ROLES[p.role]&&p.role!=='guest'&&(!S.session||S.session.role!==p.role)){ S.session={role:p.role,ts:now()}; save(); } post(); });
+window.addEventListener('hashchange',()=>{ track(); const p=hp(); if(!S.session && p.role!=='guest' && !PUB.includes(p.id)){ L.forceLogin(); if(MF.booted) MF.render(false); post(); return; } if(p.role&&MF.ROLES[p.role]&&p.role!=='guest'&&(!S.session||S.session.role!==p.role)){ S.session={role:p.role,ts:now()}; save(); } post(); });
 })();
