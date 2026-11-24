@@ -70,10 +70,24 @@ function pre(id){
   if(/^(set\.theme|c\.theme|b-theme)$/.test(id)) return 'theme';
   return 'home';
 }
+/* Live app.html bounces an unsigned sample session to app.login unless the hash names a real role.
+   Theme / Drive (and Care) are not in LROLE, so a jump from Direction B/C used to land on sign-in.
+   Keep the current live role when we have one; otherwise use LROLE or owner. */
+const LIVE_ROLES='owner bm buyer cashier sales van driver store acct mgr admin aff cfin viewer recv';
+function liveRole(k,opt){
+  if(opt&&opt.studio) return '';
+  try{
+    const cand=(window.MF&&MF.C&&MF.C.role)||hq().q.get('role')||'';
+    if(cand&&cand!=='guest'&&(LIVE_ROLES.split(' ').indexOf(cand)>-1||(window.MF&&MF.ROLES&&MF.ROLES[cand]))) return cand;
+  }catch(e){}
+  if(LROLE[k]) return LROLE[k];
+  if(k==='theme'||k==='drive'||k==='care') return 'owner';
+  return '';
+}
 function url(t,route,L,opt){ // route: engine-specific id for t
   opt=opt||{}; const B=BASE+(t.id==='v3-concepts'?'redesign-v3/concepts/':t.id+'/');
   if(opt.seller) return B+'seller.html?lang='+L+(route.startsWith('#')?route:'#/'+route);
-  if(t.e==='live'){ const k=Object.keys(LIVE).find(x=>LIVE[x]===route); const r=!opt.studio&&LROLE[k]?'&role='+LROLE[k]:''; return B+(opt.studio?'index.html':'app.html')+'#/'+route+'?lang='+L+r; }
+  if(t.e==='live'){ const k=Object.keys(LIVE).find(x=>LIVE[x]===route); const role=liveRole(k,opt); const r=role?'&role='+role:''; return B+(opt.studio?'index.html':'app.html')+'#/'+route+'?lang='+L+r; }
   if(t.e==='c'){ const [r,s]=route.split('/'); return B+(opt.studio?'index.html':'app.html')+'#r='+r+'&s='+s+'&l='+L; }
   if(t.e==='k') return B+'index.html#s='+route+'&l='+L;
   return B+'index.html#/'+route+'?lang='+L;
