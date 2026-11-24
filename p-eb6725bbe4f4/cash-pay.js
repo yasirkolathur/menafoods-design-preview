@@ -29,11 +29,15 @@ const ROLE_L={
   ADMIN:['Admin','المسؤول']
 };
 
-function T(en,ar){ const MF=window.MF; if(MF&&typeof MF.t==='function') return MF.t(en,ar);
-  const arNow=(document.documentElement.lang||'').startsWith('ar')||document.documentElement.dir==='rtl';
-  return arNow?ar:en; }
 function arLang(){ const MF=window.MF; if(MF&&MF.C) return !!MF.C.ar;
-  return (document.documentElement.lang||'').startsWith('ar')||document.documentElement.dir==='rtl'; }
+  try{ if(typeof S!=='undefined'&&S&&S.lang==='ar') return true; }catch(e){}
+  const d=document.documentElement;
+  if((d.lang||'').startsWith('ar')||d.dir==='rtl') return true;
+  const app=document.querySelector('#viewer .app[dir], .app[dir]');
+  if(app){ const dir=app.getAttribute('dir')||app.dir||''; const lang=app.getAttribute('lang')||''; if(dir==='rtl'||(lang||'').startsWith('ar')) return true; }
+  return false; }
+function T(en,ar){ const MF=window.MF; if(MF&&typeof MF.t==='function') return MF.t(en,ar);
+  return arLang()?ar:en; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function isLive(){ const A=window.MFAPI; if(!A) return false;
   try{ if(typeof A.isLive==='function') return !!(A.isLive('shop')||A.isLive()); }catch(e){}
